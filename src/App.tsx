@@ -125,8 +125,8 @@ interface SiteConfig {
 
 // --- Data ---
 const INITIAL_CONFIG: SiteConfig = {
-  siteName: "LPHASK",
-  siteNameSecondary: "HOMES",
+  siteName: "LPHASK Homes",
+  siteNameSecondary: "& Properties",
   heroTitle: "",
   heroSubtitle: "",
   heroBadge: "",
@@ -2055,7 +2055,7 @@ const Footer = ({ config }: { config: SiteConfig }) => {
 
         <div className="pt-8 border-t border-white/5 flex flex-col md:flex-row items-center justify-between gap-6 text-slate-500 text-sm">
           <div className="flex flex-col sm:flex-row sm:items-center sm:gap-4">
-            <p>&copy; {new Date().getFullYear()} LPHASK Homes & Properties. All rights reserved.</p>
+            <p>&copy; {new Date().getFullYear()} {config.siteName} {config.siteNameSecondary}. All rights reserved.</p>
             <button
               type="button"
               className="text-emerald-300 hover:text-white text-sm underline underline-offset-4"
@@ -3225,7 +3225,7 @@ const Testimonials = ({ config }: { config: SiteConfig }) => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
         <div className="text-center mb-16">
           <h2 className="text-4xl font-extrabold text-slate-900 mb-4">Client Testimonials</h2>
-          <p className="text-slate-500 max-w-2xl mx-auto">Hear from our satisfied clients about their experiences with LPHASK Homes & Properties.</p>
+          <p className="text-slate-500 max-w-2xl mx-auto">Hear from our satisfied clients about their experiences with {config.siteName} {config.siteNameSecondary}.</p>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-16">

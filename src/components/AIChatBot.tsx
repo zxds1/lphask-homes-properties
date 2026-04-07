@@ -11,7 +11,7 @@ export const AIChatBot = ({ properties }: { properties: any[] }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [input, setInput] = useState('');
   const [messages, setMessages] = useState<Message[]>([
-    { role: 'model', text: "Hello! I'm your LPHASK AI assistant. How can I help you find your dream home or property today?" }
+    { role: 'model', text: "Hello! I'm your LPHASK Homes & Properties AI assistant. How can I help you find your dream home or property today?" }
   ]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -79,7 +79,7 @@ export const AIChatBot = ({ properties }: { properties: any[] }) => {
                   <Bot size={20} aria-hidden="true" />
                 </div>
                 <div>
-                  <h3 id="ai-chatbot-title" className="font-bold text-sm">LPHASK AI Assistant</h3>
+                  <h3 id="ai-chatbot-title" className="font-bold text-sm">LPHASK Homes & Properties AI Assistant</h3>
                   <p className="text-[10px] text-emerald-100">Online & Ready to help</p>
                 </div>
               </div>
