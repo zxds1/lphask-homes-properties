@@ -28,6 +28,8 @@
     }
   ],
   "env": {
-    "NODE_ENV": "production"
+    "NODE_ENV": "production",
+    "APP_URL": "https://lphask-homes-properties.vercel.app",
+    "CORS_ORIGIN": "https://lphask-homes-properties.vercel.app"
   }
 }

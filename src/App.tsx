@@ -360,22 +360,39 @@ const Hero = ({ onSearch, properties, config }: { onSearch: (val: string) => voi
 
       <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-32 pb-8 w-full">
         <motion.div 
-          initial={{ opacity: 0, x: -50 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ duration: 0.8 }}
+          initial="hidden"
+          animate="visible"
+          transition={{ duration: 0.8, staggerChildren: 0.15 }}
           className="max-w-2xl mb-48 lg:mb-64"
         >
-          <span className="inline-block px-4 py-1.5 mb-6 text-xs font-bold tracking-widest text-white uppercase bg-red-700 rounded-full">
+          <motion.span
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6 }}
+            className="inline-block px-4 py-1.5 mb-6 text-xs font-bold tracking-widest text-white uppercase bg-red-700 rounded-full"
+          >
             {config.heroBadge}
-          </span>
-          <h1 className="text-5xl md:text-7xl font-extrabold text-white leading-tight mb-6">
+          </motion.span>
+          <motion.h1
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8 }}
+            className="text-5xl md:text-7xl font-extrabold text-white leading-tight mb-6"
+          >
             {config.heroTitle.split(' ').map((word, i) => (
-              word.toLowerCase() === 'premium' ? <span key={i} className="text-emerald-500"> {word} </span> : ` ${word} `
+              word.toLowerCase() === 'premium'
+                ? <span key={i} className="text-emerald-500"> {word} </span>
+                : ` ${word} `
             ))}
-          </h1>
-          <p className="text-lg md:text-xl text-slate-300 mb-10 leading-relaxed">
+          </motion.h1>
+          <motion.p
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8, delay: 0.1 }}
+            className="text-lg md:text-xl text-slate-300 mb-10 leading-relaxed"
+          >
             {config.heroSubtitle}
-          </p>
+          </motion.p>
         </motion.div>
       </div>
 
@@ -3741,15 +3758,27 @@ export default function App() {
   }, []);
 
   const filteredProperties = useMemo(() => {
-    if (!searchQuery.trim()) return properties;
-    const q = searchQuery.toLowerCase();
-    return properties.filter(p => 
-      p.title.toLowerCase().includes(q) || 
-      p.location.toLowerCase().includes(q) || 
-      p.category.toLowerCase().includes(q) ||
-      p.id.toLowerCase() === q ||
-      p.tags?.some(tag => tag.toLowerCase().includes(q))
-    );
+    const query = searchQuery.trim().toLowerCase();
+    if (!query) return properties;
+    return properties.filter(p => {
+      const title = p.title.toLowerCase();
+      const location = p.location.toLowerCase();
+      const category = p.category.toLowerCase();
+      const id = p.id.toLowerCase();
+      const status = p.status.toLowerCase();
+      const description = (p.description || '').toLowerCase();
+      const tags = p.tags?.map(tag => tag.toLowerCase()) || [];
+
+      return (
+        title.includes(query) ||
+        location.includes(query) ||
+        category.includes(query) ||
+        id.includes(query) ||
+        status.includes(query) ||
+        description.includes(query) ||
+        tags.some(tag => tag.includes(query))
+      );
+    });
   }, [searchQuery, properties]);
 
   const toggleComparison = useCallback((property: Property) => {
