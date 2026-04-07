@@ -10,3 +10,29 @@
     @apply font-sans text-slate-900 bg-white;
   }
 }
+
+@keyframes bg-pan {
+  0% { transform: translate(0%, 0%) scale(1); opacity: .7; }
+  50% { transform: translate(-7%, 4%) scale(1.03); opacity: .85; }
+  100% { transform: translate(0%, 0%) scale(1); opacity: .7; }
+}
+
+@keyframes float-up {
+  0% { transform: translateY(0px); }
+  50% { transform: translateY(-12px); }
+  100% { transform: translateY(0px); }
+}
+
+.animated-bg-overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image: radial-gradient(circle at top left, rgba(16,185,129,0.18), transparent 28%), radial-gradient(circle at bottom right, rgba(236,72,153,0.16), transparent 32%);
+  filter: blur(20px);
+  opacity: 0.8;
+  animation: bg-pan 22s ease-in-out infinite;
+}
+
+.animated-bg-shape {
+  animation: float-up 10s ease-in-out infinite;
+}

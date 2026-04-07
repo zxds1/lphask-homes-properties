@@ -346,7 +346,7 @@ const Hero = ({ onSearch, properties, config }: { onSearch: (val: string) => voi
   };
 
   return (
-    <section id="home" className="relative min-h-screen flex items-center overflow-hidden">
+    <section id="home" className="relative min-h-[110vh] overflow-hidden pb-40 lg:pb-72">
       {/* Background Image with Overlay */}
       <div className="absolute inset-0 z-0">
         <img 
@@ -356,27 +356,28 @@ const Hero = ({ onSearch, properties, config }: { onSearch: (val: string) => voi
           referrerPolicy="no-referrer"
         />
         <div className="absolute inset-0 bg-gradient-to-r from-slate-900/90 via-slate-900/60 to-transparent"></div>
+        <div className="animated-bg-overlay"></div>
       </div>
 
-      <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-32 pb-8 w-full">
+      <div className="relative z-20 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-32 pb-8 w-full">
         <motion.div 
-          initial="hidden"
-          animate="visible"
-          transition={{ duration: 0.8, staggerChildren: 0.15 }}
+          initial={{ opacity: 0, y: 40 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.8, ease: 'easeOut' }}
           className="max-w-2xl mb-48 lg:mb-64"
         >
           <motion.span
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6 }}
+            transition={{ duration: 0.6, delay: 0.2 }}
             className="inline-block px-4 py-1.5 mb-6 text-xs font-bold tracking-widest text-white uppercase bg-red-700 rounded-full"
           >
             {config.heroBadge}
           </motion.span>
           <motion.h1
-            initial={{ opacity: 0, y: 20 }}
+            initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8 }}
+            transition={{ duration: 0.9, ease: 'easeOut', delay: 0.25 }}
             className="text-5xl md:text-7xl font-extrabold text-white leading-tight mb-6"
           >
             {config.heroTitle.split(' ').map((word, i) => (
@@ -386,9 +387,9 @@ const Hero = ({ onSearch, properties, config }: { onSearch: (val: string) => voi
             ))}
           </motion.h1>
           <motion.p
-            initial={{ opacity: 0, y: 20 }}
+            initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8, delay: 0.1 }}
+            transition={{ duration: 0.9, delay: 0.35 }}
             className="text-lg md:text-xl text-slate-300 mb-10 leading-relaxed"
           >
             {config.heroSubtitle}
@@ -493,6 +494,7 @@ const Services = ({ onSelectService, config }: { onSelectService: (service: stri
           referrerPolicy="no-referrer"
         />
         <div className="absolute inset-0 bg-white/10"></div>
+        <div className="animated-bg-overlay"></div>
       </div>
       
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
@@ -1389,6 +1391,7 @@ const Listings = ({
           referrerPolicy="no-referrer"
         />
         <div className={`absolute inset-0 ${type === 'sale' ? 'bg-slate-50/10' : 'bg-white/10'}`}></div>
+        <div className="animated-bg-overlay"></div>
       </div>
       
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
@@ -1705,6 +1708,7 @@ const Office = ({ config }: { config: SiteConfig }) => {
           referrerPolicy="no-referrer"
         />
         <div className="absolute inset-0 bg-white/10"></div>
+        <div className="animated-bg-overlay"></div>
       </div>
       
       <div className="max-w-7xl mx-auto px-4 relative z-10">
@@ -1865,6 +1869,7 @@ const Contact = ({ initialService, config }: { initialService?: string, config: 
           referrerPolicy="no-referrer"
         />
         <div className="absolute inset-0 bg-emerald-900/10"></div>
+        <div className="animated-bg-overlay"></div>
       </div>
       
       {/* Decorative background elements */}
@@ -2009,6 +2014,7 @@ const Footer = ({ config }: { config: SiteConfig }) => {
           referrerPolicy="no-referrer"
         />
         <div className="absolute inset-0 bg-slate-950/10"></div>
+        <div className="animated-bg-overlay"></div>
       </div>
       
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
@@ -3237,6 +3243,7 @@ const Testimonials = ({ config }: { config: SiteConfig }) => {
           referrerPolicy="no-referrer"
         />
         <div className="absolute inset-0 bg-slate-50/10"></div>
+        <div className="animated-bg-overlay"></div>
       </div>
       
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
