@@ -110,7 +110,13 @@
       "bedrooms": 2,
       "bathrooms": 2,
       "sqft": 850,
-      "amenities": ["WiFi", "Parking", "Security", "Elevator", "Backup Generator"],
+      "amenities": [
+        "WiFi",
+        "Parking",
+        "Security",
+        "Elevator",
+        "Backup Generator"
+      ],
       "leaseDuration": "12 Months",
       "lat": -1.286389,
       "lng": 36.817223,
@@ -118,7 +124,11 @@
       "virtualTourUrl": "https://example.com/tour/r1",
       "videoTourUrl": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
       "status": "Available",
-      "tags": ["luxury", "modern", "city-view"]
+      "tags": [
+        "luxury",
+        "modern",
+        "city-view"
+      ]
     },
     {
       "id": "R2",
@@ -135,13 +145,21 @@
       "bedrooms": 1,
       "bathrooms": 1,
       "sqft": 500,
-      "amenities": ["Water", "Security", "Balcony"],
+      "amenities": [
+        "Water",
+        "Security",
+        "Balcony"
+      ],
       "leaseDuration": "6 Months",
       "lat": -1.3032,
-      "lng": 36.7850,
+      "lng": 36.785,
       "description": "A cozy and affordable 1-bedroom apartment located in a quiet suburban neighborhood. Features a spacious balcony and reliable water supply.",
       "status": "Available",
-      "tags": ["affordable", "quiet", "suburban"]
+      "tags": [
+        "affordable",
+        "quiet",
+        "suburban"
+      ]
     },
     {
       "id": "R3",
@@ -157,13 +175,21 @@
       "bedrooms": 0,
       "bathrooms": 1,
       "sqft": 250,
-      "amenities": ["WiFi", "CCTV", "Secure Parking"],
+      "amenities": [
+        "WiFi",
+        "CCTV",
+        "Secure Parking"
+      ],
       "leaseDuration": "Monthly",
       "lat": -1.2633,
       "lng": 36.8011,
       "description": "Modern executive bedsitter in the vibrant Westlands area. Ideal for students or young professionals looking for a secure and connected living space.",
       "status": "Available",
-      "tags": ["student-friendly", "secure", "westlands"]
+      "tags": [
+        "student-friendly",
+        "secure",
+        "westlands"
+      ]
     },
     {
       "id": "R4",
@@ -175,13 +201,21 @@
       "type": "rent",
       "category": "shop",
       "sqft": 400,
-      "amenities": ["Power", "Water", "Loading Zone"],
+      "amenities": [
+        "Power",
+        "Water",
+        "Loading Zone"
+      ],
       "leaseDuration": "24 Months",
       "lat": -1.2841,
       "lng": 36.8249,
       "description": "Prime commercial space in a high-traffic market area. Perfect for retail or service-based businesses.",
       "status": "Available",
-      "tags": ["commercial", "business", "prime-location"]
+      "tags": [
+        "commercial",
+        "business",
+        "prime-location"
+      ]
     },
     {
       "id": "S1",
@@ -194,11 +228,15 @@
       "category": "plot",
       "plotSize": "50x100 ft",
       "zoning": "Residential",
-      "lat": -1.3500,
-      "lng": 36.9000,
+      "lat": -1.35,
+      "lng": 36.9,
       "description": "Ready to build residential plot in the prestigious Green Valley estate. Fully serviced with water and electricity on site.",
       "status": "Available",
-      "tags": ["residential", "investment", "ready-to-build"]
+      "tags": [
+        "residential",
+        "investment",
+        "ready-to-build"
+      ]
     },
     {
       "id": "S2",
@@ -211,11 +249,15 @@
       "category": "plot",
       "plotSize": "1/4 Acre",
       "zoning": "Mixed Use",
-      "lat": -1.2100,
-      "lng": 36.7000,
+      "lat": -1.21,
+      "lng": 36.7,
       "description": "Spacious development land overlooking the hillside. Ideal for residential or mixed-use projects.",
       "status": "Available",
-      "tags": ["investment", "development", "hillside"]
+      "tags": [
+        "investment",
+        "development",
+        "hillside"
+      ]
     },
     {
       "id": "S3",
@@ -228,11 +270,15 @@
       "category": "plot",
       "plotSize": "0.75 Acre",
       "zoning": "Commercial",
-      "lat": -1.4000,
-      "lng": 36.6000,
+      "lat": -1.4,
+      "lng": 36.6,
       "description": "A large plot suited for commercial development or long-term investment with easy access to major roads.",
       "status": "Available",
-      "tags": ["commercial", "investment", "road-access"]
+      "tags": [
+        "commercial",
+        "investment",
+        "road-access"
+      ]
     },
     {
       "id": "S4",
@@ -245,11 +291,21 @@
       "category": "plot",
       "plotSize": "100x75 ft",
       "zoning": "Residential",
-      "lat": -1.4500,
-      "lng": 37.0000,
+      "lat": -1.45,
+      "lng": 37,
       "description": "Exclusive estate plot in a gated community with power and water lines available at the boundary.",
       "status": "Available",
-      "tags": ["exclusive", "gated", "prime"]
+      "tags": [
+        "exclusive",
+        "gated",
+        "prime"
+      ]
     }
-  ]
+  ],
+  "admin": {
+    "passwordHash": "c5a61837a7e4882a3cf41c96ea851b0ad2b8f4ac0dc5bf4bc2f4c1f718b357bfbd66de069b6075a669ab83536e60bbd0c60dc225098a57e06adbe15c2a80e7fd",
+    "salt": "7d9c63875b11b99f20c606f043b071be",
+    "resetTokenHash": "",
+    "resetExpires": 0
+  }
 }

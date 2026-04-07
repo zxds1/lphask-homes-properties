@@ -5,10 +5,11 @@ import dotenv from 'dotenv';
 import path from 'path';
 import { promises as fs } from 'fs';
 import crypto from 'crypto';
-import * as admin from 'firebase-admin';
+import admin from 'firebase-admin';
 import nodemailer from 'nodemailer';
 import multer from 'multer';
 import { GoogleGenAI } from '@google/genai';
+import { OAuth2Client } from 'google-auth-library';
 
 dotenv.config();
 
@@ -28,6 +29,8 @@ const EMAIL_USER = process.env.EMAIL_USER;
 const EMAIL_PASSWORD = process.env.EMAIL_PASSWORD;
 const EMAIL_FROM = process.env.EMAIL_FROM;
 const APP_URL = process.env.APP_URL || 'http://localhost:3000';
+const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
+const ALLOWED_ADMIN_EMAILS = process.env.ALLOWED_ADMIN_EMAILS?.split(',').map(e => e.trim().toLowerCase()) || [];
 
 if (!ADMIN_PASSWORD) {
   throw new Error('ADMIN_PASSWORD must be set in the environment.');
@@ -42,27 +45,47 @@ if (!CORS_ORIGIN) {
 }
 
 if (!FIREBASE_PROJECT_ID || !FIREBASE_CLIENT_EMAIL || !FIREBASE_PRIVATE_KEY) {
-  throw new Error('Firebase configuration is required: FIREBASE_PROJECT_ID, FIREBASE_CLIENT_EMAIL, and FIREBASE_PRIVATE_KEY.');
+  console.warn('Warning: Firebase configuration incomplete. Using local file storage instead.');
+} else {
+  try {
+    admin.initializeApp({
+      credential: admin.credential.cert({
+        projectId: FIREBASE_PROJECT_ID,
+        clientEmail: FIREBASE_CLIENT_EMAIL,
+        privateKey: FIREBASE_PRIVATE_KEY,
+      }),
+    });
+    console.log('Firebase initialized successfully');
+  } catch (error) {
+    console.warn('Warning: Firebase initialization failed. Using local file storage instead.', error);
+  }
 }
 
 if (!EMAIL_SERVICE || !EMAIL_USER || !EMAIL_PASSWORD || !EMAIL_FROM) {
-  throw new Error('Email configuration is required: EMAIL_SERVICE, EMAIL_USER, EMAIL_PASSWORD, and EMAIL_FROM.');
+  console.warn('Warning: Email configuration incomplete. Email features will not work.');
+}
+
+if (!GOOGLE_CLIENT_ID) {
+  console.warn('Warning: GOOGLE_CLIENT_ID not set. Google Sign-In will not work.');
+}
+
+if (ALLOWED_ADMIN_EMAILS.length === 0) {
+  console.warn('Warning: ALLOWED_ADMIN_EMAILS not set. All Google accounts will be allowed as admin.');
+}
+
+const googleClient = GOOGLE_CLIENT_ID ? new OAuth2Client(GOOGLE_CLIENT_ID) : null;
+
+let firestore: admin.firestore.Firestore | null = null;
+let storeDocRef: admin.firestore.DocumentReference | null = null;
+
+if (admin.apps.length > 0) {
+  firestore = admin.firestore();
+  storeDocRef = firestore.collection(FIREBASE_COLLECTION).doc(FIREBASE_DOC_ID);
 }
 
 const allowedOrigins = CORS_ORIGIN.split(',').map((origin) => origin.trim()).filter(Boolean);
 const ADMIN_SESSION_DURATION = Number(process.env.ADMIN_SESSION_DURATION || 1000 * 60 * 60);
 const UPLOADS_DIR = path.join(DATA_DIR, 'uploads');
-
-admin.initializeApp({
-  credential: admin.credential.cert({
-    projectId: FIREBASE_PROJECT_ID,
-    clientEmail: FIREBASE_CLIENT_EMAIL,
-    privateKey: FIREBASE_PRIVATE_KEY,
-  } as admin.ServiceAccount),
-});
-
-const firestore = admin.firestore();
-const storeDocRef = firestore.collection(FIREBASE_COLLECTION).doc(FIREBASE_DOC_ID);
 
 const transporter = nodemailer.createTransport({
   service: EMAIL_SERVICE,
@@ -84,6 +107,15 @@ const upload = multer({
   limits: { fileSize: 200 * 1024 * 1024 },
   fileFilter: (_req, file, cb) => {
     const allowed = ['video/mp4', 'video/webm', 'video/ogg'];
+    cb(null, allowed.includes(file.mimetype));
+  },
+});
+
+const imageUpload = multer({
+  dest: UPLOADS_DIR,
+  limits: { fileSize: 25 * 1024 * 1024 },
+  fileFilter: (_req, file, cb) => {
+    const allowed = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
     cb(null, allowed.includes(file.mimetype));
   },
 });
@@ -213,6 +245,32 @@ const createEmptyStore = () => ({
 });
 
 const readStore = async () => {
+  if (!storeDocRef) {
+    // Use local file storage
+    await fs.mkdir(DATA_DIR, { recursive: true });
+    const defaultStoreExists = await fs
+      .access(DEFAULT_STORE_FILE)
+      .then(() => true)
+      .catch(() => false);
+
+    const store = defaultStoreExists
+      ? JSON.parse(await fs.readFile(DEFAULT_STORE_FILE, 'utf-8'))
+      : createEmptyStore();
+
+    if (!store.admin) {
+      store.admin = {
+        passwordHash: '',
+        salt: '',
+        resetTokenHash: '',
+        resetExpires: 0,
+      };
+    }
+    if (!store.settings) {
+      store.settings = {};
+    }
+    return store;
+  }
+
   const doc = await storeDocRef.get();
   if (!doc.exists) {
     await fs.mkdir(DATA_DIR, { recursive: true });
@@ -243,6 +301,12 @@ const readStore = async () => {
 };
 
 const writeStore = async (store: any) => {
+  if (!storeDocRef) {
+    // Use local file storage
+    await fs.mkdir(DATA_DIR, { recursive: true });
+    await fs.writeFile(DEFAULT_STORE_FILE, JSON.stringify(store, null, 2));
+    return;
+  }
   await storeDocRef.set(store, { merge: false });
 };
 
@@ -271,6 +335,14 @@ const sanitizeSettings = (settings: any) => {
     'happyClients',
     'yearsExperience',
     'secureTransactions',
+    'heroBgImage',
+    'servicesBgImage',
+    'officeBgImage',
+    'testimonialsBgImage',
+    'rentalsBgImage',
+    'salesBgImage',
+    'contactBgImage',
+    'footerBgImage',
   ] as const;
 
   const validSettings: Record<string, string> = {};
@@ -292,10 +364,17 @@ const sanitizeSettings = (settings: any) => {
 
 const validatePropertyUpdates = (updates: any) => {
   const validStatuses = ['Available', 'Under Offer', 'Sold', 'Rented', 'Unavailable'];
+  const validTypes = ['rent', 'sale'];
   const updatedProperty: any = {};
 
   if ('title' in updates && typeof updates.title === 'string') {
     updatedProperty.title = sanitizeText(updates.title);
+  }
+  if ('type' in updates && typeof updates.type === 'string' && validTypes.includes(updates.type)) {
+    updatedProperty.type = updates.type;
+  }
+  if ('category' in updates && typeof updates.category === 'string') {
+    updatedProperty.category = sanitizeText(updates.category);
   }
   if ('location' in updates && typeof updates.location === 'string') {
     updatedProperty.location = sanitizeText(updates.location);
@@ -308,6 +387,30 @@ const validatePropertyUpdates = (updates: any) => {
   }
   if ('status' in updates && typeof updates.status === 'string' && validStatuses.includes(updates.status)) {
     updatedProperty.status = updates.status;
+  }
+  if ('img' in updates && typeof updates.img === 'string') {
+    updatedProperty.img = sanitizeText(updates.img);
+  }
+  if ('images' in updates && Array.isArray(updates.images)) {
+    updatedProperty.images = updates.images.filter((img: any) => typeof img === 'string').map((img: string) => sanitizeText(img));
+  }
+  if ('bedrooms' in updates && typeof updates.bedrooms === 'number') {
+    updatedProperty.bedrooms = updates.bedrooms;
+  }
+  if ('bathrooms' in updates && typeof updates.bathrooms === 'number') {
+    updatedProperty.bathrooms = updates.bathrooms;
+  }
+  if ('sqft' in updates && typeof updates.sqft === 'number') {
+    updatedProperty.sqft = updates.sqft;
+  }
+  if ('plotSize' in updates && typeof updates.plotSize === 'string') {
+    updatedProperty.plotSize = sanitizeText(updates.plotSize);
+  }
+  if ('zoning' in updates && typeof updates.zoning === 'string') {
+    updatedProperty.zoning = sanitizeText(updates.zoning);
+  }
+  if ('amenities' in updates && Array.isArray(updates.amenities)) {
+    updatedProperty.amenities = updates.amenities.filter((a: any) => typeof a === 'string').map((a: string) => sanitizeText(a));
   }
   if ('virtualTourUrl' in updates && typeof updates.virtualTourUrl === 'string') {
     updatedProperty.virtualTourUrl = sanitizeText(updates.virtualTourUrl);
@@ -333,6 +436,70 @@ app.get('/api/config', async (_req, res) => {
   } catch (error) {
     console.error('Unable to load config:', error);
     return res.status(500).json({ error: 'Unable to load application configuration.' });
+  }
+});
+
+app.post('/api/admin/google-login', async (req, res) => {
+  const { credential } = req.body;
+  const clientIp = getClientIp(req);
+
+  if (!credential || typeof credential !== 'string') {
+    return res.status(400).json({ error: 'Google credential is required.' });
+  }
+
+  if (!googleClient) {
+    return res.status(503).json({ error: 'Google Sign-In is not configured on the server.' });
+  }
+
+  if (!recordRateLimit(clientIp, 5, 15 * 60 * 1000)) {
+    return res.status(429).json({ error: 'Too many login attempts. Please try again later.' });
+  }
+
+  try {
+    const ticket = await googleClient.verifyIdToken({
+      idToken: credential,
+      audience: GOOGLE_CLIENT_ID,
+    });
+
+    const payload = ticket.getPayload();
+    if (!payload || !payload.email) {
+      return res.status(401).json({ error: 'Invalid Google token.' });
+    }
+
+    const email = payload.email.toLowerCase();
+    const emailVerified = payload.email_verified;
+
+    if (!emailVerified) {
+      return res.status(401).json({ error: 'Email not verified with Google.' });
+    }
+
+    // Check if email is in allowed list (if configured)
+    if (ALLOWED_ADMIN_EMAILS.length > 0 && !ALLOWED_ADMIN_EMAILS.includes(email)) {
+      return res.status(403).json({ error: 'This Google account is not authorized as admin.' });
+    }
+
+    // Create admin session
+    const token = createAdminToken();
+    adminSessions.set(token, Date.now());
+    res.cookie('adminToken', token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+      maxAge: ADMIN_SESSION_DURATION,
+      path: '/',
+    });
+
+    return res.json({ 
+      success: true, 
+      user: {
+        email: payload.email,
+        name: payload.name,
+        picture: payload.picture,
+      }
+    });
+  } catch (error) {
+    console.error('Google login error:', error);
+    return res.status(401).json({ error: 'Invalid Google credentials.' });
   }
 });
 
@@ -518,6 +685,28 @@ app.post('/api/admin/property', async (req, res) => {
   return res.json({ success: true, property: updatedProperty });
 });
 
+app.post('/api/admin/delete-property', async (req, res) => {
+  if (!ensureAdminAuthenticated(req, res)) {
+    return;
+  }
+
+  const { id } = req.body;
+  if (!id || typeof id !== 'string') {
+    return res.status(400).json({ error: 'Property id is required.' });
+  }
+
+  const store = await readStore();
+  const index = store.properties.findIndex((property: any) => property.id === id);
+  if (index === -1) {
+    return res.status(404).json({ error: 'Property not found.' });
+  }
+
+  store.properties.splice(index, 1);
+  await writeStore(store);
+
+  return res.json({ success: true });
+});
+
 app.post('/api/admin/upload-video', upload.single('video'), async (req, res) => {
   if (!ensureAdminAuthenticated(req, res)) {
     return;
@@ -556,6 +745,51 @@ app.post('/api/admin/upload-video', upload.single('video'), async (req, res) => 
   await writeStore(store);
 
   return res.json({ success: true, property: updatedProperty });
+});
+
+app.post('/api/admin/upload-image', imageUpload.single('image'), async (req, res) => {
+  if (!ensureAdminAuthenticated(req, res)) {
+    return;
+  }
+
+  const key = req.body.key;
+  const allowedKeys = [
+    'heroBgImage',
+    'servicesBgImage',
+    'officeBgImage',
+    'testimonialsBgImage',
+    'rentalsBgImage',
+    'salesBgImage',
+    'contactBgImage',
+    'footerBgImage',
+  ];
+
+  if (!key || typeof key !== 'string' || !allowedKeys.includes(key)) {
+    return res.status(400).json({ error: 'A valid image target is required.' });
+  }
+
+  if (!req.file) {
+    return res.status(400).json({ error: 'An image file is required.' });
+  }
+
+  const extension = path.extname(req.file.originalname) || '.png';
+  const fileName = `${req.file.filename}${extension}`;
+  const targetPath = path.join(UPLOADS_DIR, fileName);
+
+  try {
+    await fs.rename(req.file.path, targetPath);
+  } catch (error) {
+    console.error('Unable to store uploaded image:', error);
+    await fs.unlink(req.file.path).catch(() => {});
+    return res.status(500).json({ error: 'Failed to store uploaded image.' });
+  }
+
+  const imageUrl = `/uploads/${fileName}`;
+  const store = await readStore();
+  store.settings = { ...store.settings, [key]: imageUrl };
+  await writeStore(store);
+
+  return res.json({ success: true, key, value: imageUrl, settings: store.settings });
 });
 
 app.post('/api/chat', async (req, res) => {

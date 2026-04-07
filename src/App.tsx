@@ -4,6 +4,7 @@
  */
 
 import { motion, AnimatePresence } from "motion/react";
+import { GoogleOAuthProvider, GoogleLogin } from '@react-oauth/google';
 import { 
   Home, 
   Building2, 
@@ -98,6 +99,13 @@ interface SiteConfig {
   };
   siteDescription: string;
   heroBgImage: string;
+  servicesBgImage?: string;
+  officeBgImage?: string;
+  testimonialsBgImage?: string;
+  rentalsBgImage?: string;
+  salesBgImage?: string;
+  contactBgImage?: string;
+  footerBgImage?: string;
   viewingFee: string;
   adminEmail: string;
   propertiesManaged: string;
@@ -138,6 +146,13 @@ const INITIAL_CONFIG: SiteConfig = {
   },
   siteDescription: "",
   heroBgImage: "",
+  servicesBgImage: "",
+  officeBgImage: "",
+  testimonialsBgImage: "",
+  rentalsBgImage: "",
+  salesBgImage: "",
+  contactBgImage: "",
+  footerBgImage: "",
   viewingFee: "",
   services: [],
   testimonials: []
@@ -331,7 +346,7 @@ const Hero = ({ onSearch, properties, config }: { onSearch: (val: string) => voi
   };
 
   return (
-    <section id="home" className="relative h-screen flex items-center overflow-hidden">
+    <section id="home" className="relative min-h-screen flex items-center overflow-hidden">
       {/* Background Image with Overlay */}
       <div className="absolute inset-0 z-0">
         <img 
@@ -343,12 +358,12 @@ const Hero = ({ onSearch, properties, config }: { onSearch: (val: string) => voi
         <div className="absolute inset-0 bg-gradient-to-r from-slate-900/90 via-slate-900/60 to-transparent"></div>
       </div>
 
-      <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-20 pb-28">
+      <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-32 pb-8 w-full">
         <motion.div 
           initial={{ opacity: 0, x: -50 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ duration: 0.8 }}
-          className="max-w-2xl"
+          className="max-w-2xl mb-48 lg:mb-64"
         >
           <span className="inline-block px-4 py-1.5 mb-6 text-xs font-bold tracking-widest text-white uppercase bg-red-700 rounded-full">
             {config.heroBadge}
@@ -361,16 +376,21 @@ const Hero = ({ onSearch, properties, config }: { onSearch: (val: string) => voi
           <p className="text-lg md:text-xl text-slate-300 mb-10 leading-relaxed">
             {config.heroSubtitle}
           </p>
-          
+        </motion.div>
+      </div>
+
+      {/* Stats Overlay */}
+      <div className="absolute bottom-0 left-0 right-0 bg-white/5 backdrop-blur-xl border-t border-white/10 py-8 hidden lg:block">
+        <div className="max-w-7xl mx-auto px-4 space-y-6">
           {/* Search Bar */}
-          <div className="relative mb-10">
-            <form onSubmit={handleSearch} className="flex flex-col sm:flex-row gap-2 bg-white/10 backdrop-blur-md p-2 rounded-2xl border border-white/20 shadow-2xl shadow-emerald-900/40">
-              <div className="flex-1 flex items-center px-4 py-3 bg-white rounded-xl">
+          <div className="relative">
+            <form onSubmit={handleSearch} className="flex flex-col sm:flex-row gap-2 bg-slate-900/60 backdrop-blur-md p-2 rounded-2xl shadow-2xl">
+              <div className="flex-1 flex items-center px-4 py-3 bg-white/95 backdrop-blur-sm rounded-xl">
                 <Search className="text-slate-400 mr-2" size={20} />
                 <input 
                   type="text" 
                   placeholder="Search by location, type, or ID (e.g. R1)..." 
-                  className="w-full bg-transparent text-slate-900 focus:outline-none placeholder:text-slate-400 font-medium"
+                  className="w-full bg-transparent text-slate-900 focus:outline-none placeholder:text-slate-500 font-medium"
                   value={searchValue}
                   onChange={(e) => {
                     setSearchValue(e.target.value);
@@ -379,7 +399,7 @@ const Hero = ({ onSearch, properties, config }: { onSearch: (val: string) => voi
                   onFocus={() => setShowSuggestions(true)}
                 />
               </div>
-              <button type="submit" className="bg-emerald-600 text-white px-8 py-3 rounded-xl font-bold hover:bg-emerald-700 transition-all flex items-center justify-center gap-2">
+              <button type="submit" className="bg-emerald-600 text-white px-8 py-3 rounded-xl font-bold hover:bg-emerald-700 transition-all flex items-center justify-center gap-2 shadow-lg">
                 <Search size={18} />
                 Search Properties
               </button>
@@ -408,8 +428,28 @@ const Hero = ({ onSearch, properties, config }: { onSearch: (val: string) => voi
               )}
             </AnimatePresence>
           </div>
-
-          <div className="flex flex-col sm:flex-row gap-4">
+          
+          <div className="grid grid-cols-4 gap-4 text-white">
+            <div className="text-center rounded-2xl bg-slate-950/80 p-4 border border-white/10 shadow-xl">
+              <div className="text-xl font-bold">{config.propertiesManaged || '500+'}</div>
+              <div className="text-slate-400 text-[10px] mt-1">Properties Managed</div>
+            </div>
+            <div className="text-center rounded-2xl bg-slate-950/80 p-4 border border-white/10 shadow-xl">
+              <div className="text-xl font-bold">{config.happyClients || '1.2k'}</div>
+              <div className="text-slate-400 text-[10px] mt-1">Happy Clients</div>
+            </div>
+            <div className="text-center rounded-2xl bg-slate-950/80 p-4 border border-white/10 shadow-xl">
+              <div className="text-xl font-bold">{config.yearsExperience || '15+'}</div>
+              <div className="text-[10px] text-slate-400 mt-1">Years Experience</div>
+            </div>
+            <div className="text-center rounded-2xl bg-slate-950/80 p-4 border border-white/10 shadow-xl">
+              <div className="text-xl font-bold">{config.secureTransactions || '100%'}</div>
+              <div className="text-slate-400 text-[10px] mt-1">Secure Transactions</div>
+            </div>
+          </div>
+          
+          {/* Buttons moved below stats */}
+          <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <a href="#rentals" className="flex items-center justify-center bg-emerald-600 text-white px-8 py-4 rounded-xl font-bold text-lg hover:bg-emerald-700 transition-all shadow-xl shadow-emerald-600/20 group">
               Explore Rentals
               <ArrowRight className="ml-2 group-hover:translate-x-1 transition-transform" size={20} />
@@ -417,28 +457,6 @@ const Hero = ({ onSearch, properties, config }: { onSearch: (val: string) => voi
             <a href="#contact" className="flex items-center justify-center bg-white/10 backdrop-blur-md border border-white/20 text-white px-8 py-4 rounded-xl font-bold text-lg hover:bg-white/20 transition-all">
               Contact Us
             </a>
-          </div>
-        </motion.div>
-      </div>
-
-      {/* Stats Overlay */}
-      <div className="absolute bottom-20 left-0 right-0 bg-white/5 backdrop-blur-xl border-t border-white/10 py-8 hidden lg:block">
-        <div className="max-w-7xl mx-auto px-4 grid grid-cols-2 xl:grid-cols-4 gap-4 text-white">
-          <div className="text-center rounded-3xl bg-slate-950/80 p-6 border border-white/10 shadow-xl">
-            <div className="text-3xl font-bold">{config.propertiesManaged || '500+'}</div>
-            <div className="text-slate-400 text-sm mt-2">Properties Managed</div>
-          </div>
-          <div className="text-center rounded-3xl bg-slate-950/80 p-6 border border-white/10 shadow-xl">
-            <div className="text-3xl font-bold">{config.happyClients || '1.2k'}</div>
-            <div className="text-slate-400 text-sm mt-2">Happy Clients</div>
-          </div>
-          <div className="text-center rounded-3xl bg-slate-950/80 p-6 border border-white/10 shadow-xl">
-            <div className="text-3xl font-bold">{config.yearsExperience || '15+'}</div>
-            <div className="text-slate-400 text-sm mt-2">Years Experience</div>
-          </div>
-          <div className="text-center rounded-3xl bg-slate-950/80 p-6 border border-white/10 shadow-xl">
-            <div className="text-3xl font-bold">{config.secureTransactions || '100%'}</div>
-            <div className="text-slate-400 text-sm mt-2">Secure Transactions</div>
           </div>
         </div>
       </div>
@@ -448,8 +466,19 @@ const Hero = ({ onSearch, properties, config }: { onSearch: (val: string) => voi
 
 const Services = ({ onSelectService, config }: { onSelectService: (service: string) => void, config: SiteConfig }) => {
   return (
-    <section id="services" className="py-24 bg-slate-50">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <section id="services" className="py-24 bg-slate-50 relative overflow-hidden">
+      {/* Background Image with Overlay */}
+      <div className="absolute inset-0 z-0">
+        <img 
+          src={config.servicesBgImage || "https://images.unsplash.com/photo-1560518883-ce09059eeffa?w=1920&q=80"} 
+          alt="Services Background" 
+          className="w-full h-full object-cover"
+          referrerPolicy="no-referrer"
+        />
+        <div className="absolute inset-0 bg-white/10"></div>
+      </div>
+      
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
         <div className="text-center mb-16">
           <h2 className="text-emerald-700 font-bold tracking-widest uppercase text-sm mb-4">Our Expertise</h2>
           <h3 className="text-4xl font-extrabold text-slate-900">Comprehensive Home Solutions</h3>
@@ -1234,7 +1263,8 @@ const Listings = ({
   comparisonList,
   userLocation,
   onRequestViewing,
-  onRequestInfo
+  onRequestInfo,
+  config,
 }: { 
   type: 'rent' | 'sale', 
   properties: Property[],
@@ -1243,7 +1273,8 @@ const Listings = ({
   comparisonList: string[],
   userLocation: { lat: number, lng: number } | null,
   onRequestViewing: (p: Property) => void,
-  onRequestInfo: (p: Property) => void
+  onRequestInfo: (p: Property) => void,
+  config: SiteConfig,
 }) => {
   const [filters, setFilters] = useState({
     priceRange: 'all',
@@ -1331,8 +1362,19 @@ const Listings = ({
   }, [properties, type]);
 
   return (
-    <section id={type === 'rent' ? "rentals" : "sales"} className={`py-24 ${type === 'sale' ? 'bg-slate-50' : 'bg-white'}`}>
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <section id={type === 'rent' ? "rentals" : "sales"} className={`py-24 ${type === 'sale' ? 'bg-slate-50' : 'bg-white'} relative overflow-hidden`}>
+      {/* Background Image with Overlay */}
+      <div className="absolute inset-0 z-0">
+        <img 
+          src={type === 'rent' ? config.rentalsBgImage || "https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?w=1920&q=80" : config.salesBgImage || "https://images.unsplash.com/photo-1564013799919-ab600027ffc6?w=1920&q=80"} 
+          alt={`${type === 'rent' ? 'Rentals' : 'Sales'} Background`} 
+          className="w-full h-full object-cover"
+          referrerPolicy="no-referrer"
+        />
+        <div className={`absolute inset-0 ${type === 'sale' ? 'bg-slate-50/10' : 'bg-white/10'}`}></div>
+      </div>
+      
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
         <div className="flex flex-col xl:flex-row justify-between items-start xl:items-end mb-12 gap-8">
           <div>
             <h2 className={`font-bold tracking-widest uppercase text-sm mb-4 ${type === 'rent' ? 'text-emerald-700' : 'text-red-700'}`}>
@@ -1636,8 +1678,19 @@ const Listings = ({
 
 const Office = ({ config }: { config: SiteConfig }) => {
   return (
-    <section id="office" className="py-24 bg-white overflow-hidden">
-      <div className="max-w-7xl mx-auto px-4">
+    <section id="office" className="py-24 bg-white overflow-hidden relative">
+      {/* Background Image with Overlay */}
+      <div className="absolute inset-0 z-0">
+        <img 
+          src={config.officeBgImage || "https://images.unsplash.com/photo-1497366216548-37526070297c?w=1920&q=80"} 
+          alt="Office Background" 
+          className="w-full h-full object-cover"
+          referrerPolicy="no-referrer"
+        />
+        <div className="absolute inset-0 bg-white/10"></div>
+      </div>
+      
+      <div className="max-w-7xl mx-auto px-4 relative z-10">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
           <motion.div
             initial={{ opacity: 0, x: -50 }}
@@ -1786,9 +1839,20 @@ const Contact = ({ initialService, config }: { initialService?: string, config: 
 
   return (
     <section id="contact" className="py-24 bg-emerald-900 text-white overflow-hidden relative">
+      {/* Background Image with Overlay */}
+      <div className="absolute inset-0 z-0">
+        <img 
+          src={config.contactBgImage || "https://images.unsplash.com/photo-1423666639041-f56000c27a9a?w=1920&q=80"} 
+          alt="Contact Background" 
+          className="w-full h-full object-cover"
+          referrerPolicy="no-referrer"
+        />
+        <div className="absolute inset-0 bg-emerald-900/10"></div>
+      </div>
+      
       {/* Decorative background elements */}
-      <div className="absolute top-0 right-0 w-96 h-96 bg-emerald-800 rounded-full blur-3xl -mr-48 -mt-48 opacity-50"></div>
-      <div className="absolute bottom-0 left-0 w-96 h-96 bg-emerald-800 rounded-full blur-3xl -ml-48 -mb-48 opacity-50"></div>
+      <div className="absolute top-0 right-0 w-96 h-96 bg-emerald-800 rounded-full blur-3xl -mr-48 -mt-48 opacity-30 z-[1]"></div>
+      <div className="absolute bottom-0 left-0 w-96 h-96 bg-emerald-800 rounded-full blur-3xl -ml-48 -mb-48 opacity-30 z-[1]"></div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
@@ -1918,8 +1982,19 @@ const Contact = ({ initialService, config }: { initialService?: string, config: 
 
 const Footer = ({ config }: { config: SiteConfig }) => {
   return (
-    <footer className="bg-slate-950 text-white pt-20 pb-10">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <footer className="bg-slate-950 text-white pt-20 pb-10 relative overflow-hidden">
+      {/* Background Image with Overlay */}
+      <div className="absolute inset-0 z-0">
+        <img 
+          src={config.footerBgImage || "https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?w=1920&q=80"} 
+          alt="Footer Background" 
+          className="w-full h-full object-cover"
+          referrerPolicy="no-referrer"
+        />
+        <div className="absolute inset-0 bg-slate-950/10"></div>
+      </div>
+      
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12 mb-16">
           <div>
             <div className="text-3xl font-extrabold tracking-tighter mb-6">
@@ -2013,9 +2088,16 @@ const Footer = ({ config }: { config: SiteConfig }) => {
   );
 };
 
-const AdminLoginModal = ({ onClose, onLogin, onForgot, error }: { onClose: () => void, onLogin: (password: string) => void, onForgot: () => void, error?: string }) => {
+const AdminLoginModal = ({ onClose, onLogin, onGoogleLogin, onForgot, error }: { 
+  onClose: () => void, 
+  onLogin: (password: string) => void,
+  onGoogleLogin: (credential: string) => void,
+  onForgot: () => void, 
+  error?: string 
+}) => {
   const [password, setPassword] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -2024,13 +2106,52 @@ const AdminLoginModal = ({ onClose, onLogin, onForgot, error }: { onClose: () =>
     setIsSubmitting(false);
   };
 
+  const handleGoogleSuccess = async (credentialResponse: any) => {
+    if (credentialResponse.credential) {
+      await onGoogleLogin(credentialResponse.credential);
+    }
+  };
+
+  const handleGoogleError = () => {
+    console.error('Google Sign-In failed');
+  };
+
   return (
     <motion.div className="fixed inset-0 z-[210] bg-slate-900/90 backdrop-blur-md flex items-center justify-center p-4" role="dialog" aria-modal="true">
       <motion.div className="bg-white w-full max-w-md rounded-[2rem] p-8 shadow-2xl">
         <div className="mb-6">
           <h3 className="text-2xl font-bold text-slate-900">Admin Login</h3>
-          <p className="text-slate-500 mt-2">Enter the admin password to manage site settings and property details.</p>
+          <p className="text-slate-500 mt-2">Sign in with Google or use your admin password</p>
         </div>
+
+        {/* Google Sign-In */}
+        {googleClientId && (
+          <div className="mb-6">
+            <GoogleLogin
+              onSuccess={handleGoogleSuccess}
+              onError={handleGoogleError}
+              useOneTap
+              theme="outline"
+              size="large"
+              text="signin_with"
+              shape="rectangular"
+              width="100%"
+            />
+          </div>
+        )}
+
+        {/* Divider */}
+        {googleClientId && (
+          <div className="relative mb-6">
+            <div className="absolute inset-0 flex items-center">
+              <div className="w-full border-t border-slate-200"></div>
+            </div>
+            <div className="relative flex justify-center text-sm">
+              <span className="px-4 bg-white text-slate-500">Or continue with password</span>
+            </div>
+          </div>
+        )}
+
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label htmlFor="admin-password" className="block text-sm font-semibold text-slate-600 mb-2">Password</label>
@@ -2163,6 +2284,7 @@ const AdminPanel = ({
   onSaveSettings,
   onSaveProperty,
   onUploadVideo,
+  onUploadBackgroundImage,
   onChangePassword,
   onLogout,
   onClose,
@@ -2178,6 +2300,8 @@ const AdminPanel = ({
   setSelectedVideoFile,
   uploadError,
   isUploadingVideo,
+  onAddProperty,
+  onDeleteProperty,
 }: {
   config: SiteConfig;
   properties: Property[];
@@ -2188,6 +2312,7 @@ const AdminPanel = ({
   onSaveSettings: () => Promise<void>;
   onSaveProperty: (property: Property) => Promise<void>;
   onUploadVideo: (propertyId: string, file: File | null) => Promise<void>;
+  onUploadBackgroundImage: (key: string, file: File | null) => Promise<void>;
   onChangePassword: (currentPassword: string, newPassword: string) => Promise<void>;
   onLogout: () => void;
   onClose: () => void;
@@ -2203,14 +2328,46 @@ const AdminPanel = ({
   setSelectedVideoFile: (file: File | null) => void;
   uploadError: string | null;
   isUploadingVideo: boolean;
+  onAddProperty: () => void;
+  onDeleteProperty: (id: string) => Promise<void>;
 }) => {
   const [localSettings, setLocalSettings] = useState<SiteConfig>(settingsDraft);
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
+  const [showAddProperty, setShowAddProperty] = useState(false);
+  const [mapLocation, setMapLocation] = useState('');
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(null);
+  const [bgUploadTarget, setBgUploadTarget] = useState<'heroBgImage' | 'servicesBgImage' | 'officeBgImage' | 'testimonialsBgImage' | 'rentalsBgImage' | 'salesBgImage' | 'contactBgImage' | 'footerBgImage'>('heroBgImage');
+  const [bgUploadFile, setBgUploadFile] = useState<File | null>(null);
+  const [isUploadingBgImage, setIsUploadingBgImage] = useState(false);
+  const [bgUploadError, setBgUploadError] = useState<string | null>(null);
+  const [bgUploadSuccess, setBgUploadSuccess] = useState<string | null>(null);
 
   useEffect(() => {
     setLocalSettings(settingsDraft);
   }, [settingsDraft]);
+
+  const uploadSelectedBackgroundImage = async () => {
+    setBgUploadError(null);
+    setBgUploadSuccess(null);
+
+    if (!bgUploadFile) {
+      setBgUploadError('Please select an image file before uploading.');
+      return;
+    }
+
+    setIsUploadingBgImage(true);
+    try {
+      await onUploadBackgroundImage(bgUploadTarget, bgUploadFile);
+      setBgUploadSuccess('Background image uploaded successfully.');
+      setBgUploadFile(null);
+    } catch (error) {
+      console.error(error);
+      setBgUploadError(error instanceof Error ? error.message : 'Unable to upload background image.');
+    } finally {
+      setIsUploadingBgImage(false);
+    }
+  };
 
   return (
     <motion.div className="fixed inset-0 z-[205] bg-slate-950/95 backdrop-blur-xl overflow-y-auto p-4" role="dialog" aria-modal="true">
@@ -2307,6 +2464,150 @@ const AdminPanel = ({
                     }}
                     className="w-full rounded-2xl border border-slate-200 px-4 py-3"
                   />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-slate-600 mb-2">Hero Background Image URL</label>
+                  <input
+                    value={localSettings.heroBgImage}
+                    onChange={(e) => {
+                      setLocalSettings({ ...localSettings, heroBgImage: e.target.value });
+                      onSettingsChange({ heroBgImage: e.target.value });
+                    }}
+                    placeholder="https://example.com/hero.jpg"
+                    className="w-full rounded-2xl border border-slate-200 px-4 py-3"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-slate-600 mb-2">Services Section Background URL</label>
+                  <input
+                    value={localSettings.servicesBgImage || ''}
+                    onChange={(e) => {
+                      setLocalSettings({ ...localSettings, servicesBgImage: e.target.value });
+                      onSettingsChange({ servicesBgImage: e.target.value });
+                    }}
+                    placeholder="https://example.com/services.jpg"
+                    className="w-full rounded-2xl border border-slate-200 px-4 py-3"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-slate-600 mb-2">Office Section Background URL</label>
+                  <input
+                    value={localSettings.officeBgImage || ''}
+                    onChange={(e) => {
+                      setLocalSettings({ ...localSettings, officeBgImage: e.target.value });
+                      onSettingsChange({ officeBgImage: e.target.value });
+                    }}
+                    placeholder="https://example.com/office.jpg"
+                    className="w-full rounded-2xl border border-slate-200 px-4 py-3"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-slate-600 mb-2">Testimonials Background Image URL</label>
+                  <input
+                    value={localSettings.testimonialsBgImage || ''}
+                    onChange={(e) => {
+                      setLocalSettings({ ...localSettings, testimonialsBgImage: e.target.value });
+                      onSettingsChange({ testimonialsBgImage: e.target.value });
+                    }}
+                    placeholder="https://example.com/testimonials.jpg"
+                    className="w-full rounded-2xl border border-slate-200 px-4 py-3"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-slate-600 mb-2">Rentals Background Image URL</label>
+                  <input
+                    value={localSettings.rentalsBgImage || ''}
+                    onChange={(e) => {
+                      setLocalSettings({ ...localSettings, rentalsBgImage: e.target.value });
+                      onSettingsChange({ rentalsBgImage: e.target.value });
+                    }}
+                    placeholder="https://example.com/rentals.jpg"
+                    className="w-full rounded-2xl border border-slate-200 px-4 py-3"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-slate-600 mb-2">Sales Background Image URL</label>
+                  <input
+                    value={localSettings.salesBgImage || ''}
+                    onChange={(e) => {
+                      setLocalSettings({ ...localSettings, salesBgImage: e.target.value });
+                      onSettingsChange({ salesBgImage: e.target.value });
+                    }}
+                    placeholder="https://example.com/sales.jpg"
+                    className="w-full rounded-2xl border border-slate-200 px-4 py-3"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-slate-600 mb-2">Contact Section Background URL</label>
+                  <input
+                    value={localSettings.contactBgImage || ''}
+                    onChange={(e) => {
+                      setLocalSettings({ ...localSettings, contactBgImage: e.target.value });
+                      onSettingsChange({ contactBgImage: e.target.value });
+                    }}
+                    placeholder="https://example.com/contact.jpg"
+                    className="w-full rounded-2xl border border-slate-200 px-4 py-3"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-slate-600 mb-2">Footer Background Image URL</label>
+                  <input
+                    value={localSettings.footerBgImage || ''}
+                    onChange={(e) => {
+                      setLocalSettings({ ...localSettings, footerBgImage: e.target.value });
+                      onSettingsChange({ footerBgImage: e.target.value });
+                    }}
+                    placeholder="https://example.com/footer.jpg"
+                    className="w-full rounded-2xl border border-slate-200 px-4 py-3"
+                  />
+                </div>
+                <div className="col-span-full mt-4 p-6 rounded-3xl border border-slate-200 bg-slate-50">
+                  <h4 className="text-lg font-bold mb-4">Upload Background Image</h4>
+                  <div className="grid gap-4 md:grid-cols-[1.2fr_auto] items-end">
+                    <div className="grid gap-4">
+                      <div>
+                        <label className="block text-sm font-semibold text-slate-600 mb-2">Target Section</label>
+                        <select
+                          value={bgUploadTarget}
+                          onChange={(e) => setBgUploadTarget(e.target.value as any)}
+                          className="w-full rounded-2xl border border-slate-200 px-4 py-3"
+                        >
+                          <option value="heroBgImage">Hero</option>
+                          <option value="servicesBgImage">Services</option>
+                          <option value="officeBgImage">Office</option>
+                          <option value="testimonialsBgImage">Testimonials</option>
+                          <option value="rentalsBgImage">Rentals</option>
+                          <option value="salesBgImage">Sales</option>
+                          <option value="contactBgImage">Contact</option>
+                          <option value="footerBgImage">Footer</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-semibold text-slate-600 mb-2">Upload Image File</label>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={(e) => setBgUploadFile(e.target.files?.[0] ?? null)}
+                          className="w-full rounded-2xl border border-slate-200 px-4 py-2 bg-white"
+                        />
+                      </div>
+                      {bgUploadError && <p className="text-sm text-rose-500">{bgUploadError}</p>}
+                      {bgUploadSuccess && <p className="text-sm text-emerald-600">{bgUploadSuccess}</p>}
+                      {localSettings[bgUploadTarget] ? (
+                        <div className="rounded-2xl overflow-hidden border border-slate-200">
+                          <img src={localSettings[bgUploadTarget]} alt="Current background preview" className="w-full h-40 object-cover" />
+                        </div>
+                      ) : null}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={uploadSelectedBackgroundImage}
+                      disabled={isUploadingBgImage}
+                      className="rounded-2xl bg-emerald-600 text-white px-6 py-4 font-semibold hover:bg-emerald-700 transition-all disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      {isUploadingBgImage ? 'Uploading...' : 'Upload Background'}
+                    </button>
+                  </div>
                 </div>
                 <div>
                   <label className="block text-sm font-semibold text-slate-600 mb-2">Office Hours</label>
@@ -2433,10 +2734,19 @@ const AdminPanel = ({
           </section>
 
           <section className="rounded-[2rem] border-2 border-emerald-200 bg-white p-8 shadow-lg">
-            <h3 className="text-2xl font-bold mb-6 text-slate-900 flex items-center gap-2">
-              <Building2 className="text-emerald-600" size={28} />
-              Property Editor
-            </h3>
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
+                <Building2 className="text-emerald-600" size={28} />
+                Property Manager
+              </h3>
+              <button
+                onClick={() => setShowAddProperty(true)}
+                className="flex items-center gap-2 bg-emerald-600 text-white px-4 py-2 rounded-xl font-bold hover:bg-emerald-700 transition-all"
+              >
+                <Plus size={20} />
+                Add Property
+              </button>
+            </div>
             <div className="space-y-4">
               <div className="grid gap-3 md:grid-cols-[1fr_180px]">
                 <div>
@@ -2489,56 +2799,244 @@ const AdminPanel = ({
 
               {propertyDraft ? (
                 <div className="space-y-4">
+                  <div className="flex items-center justify-between mb-4">
+                    <h4 className="text-lg font-bold text-slate-900">Editing: {propertyDraft.title}</h4>
+                    <button
+                      onClick={() => setShowDeleteConfirm(propertyDraft.id)}
+                      className="flex items-center gap-2 bg-red-100 text-red-600 px-3 py-2 rounded-xl font-bold hover:bg-red-200 transition-all"
+                    >
+                      <Minus size={16} />
+                      Delete
+                    </button>
+                  </div>
+
+                  {/* Basic Info */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-semibold text-slate-600 mb-2">Property ID</label>
+                      <input
+                        value={propertyDraft.id}
+                        disabled
+                        className="w-full rounded-2xl border border-slate-200 px-4 py-3 bg-slate-50"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-semibold text-slate-600 mb-2">Type</label>
+                      <select
+                        value={propertyDraft.type}
+                        onChange={(e) => onPropertyDraftChange({ type: e.target.value as 'rent' | 'sale' })}
+                        className="w-full rounded-2xl border border-slate-200 px-4 py-3"
+                      >
+                        <option value="rent">For Rent</option>
+                        <option value="sale">For Sale</option>
+                      </select>
+                    </div>
+                  </div>
+
                   <div>
                     <label className="block text-sm font-semibold text-slate-600 mb-2">Title</label>
                     <input
                       value={propertyDraft.title}
                       onChange={(e) => onPropertyDraftChange({ title: e.target.value })}
                       className="w-full rounded-2xl border border-slate-200 px-4 py-3"
+                      placeholder="e.g., Premium 2 Bedroom Apartment"
                     />
                   </div>
+
                   <div>
-                    <label className="block text-sm font-semibold text-slate-600 mb-2">Location (search string)</label>
+                    <label className="block text-sm font-semibold text-slate-600 mb-2">Category</label>
+                    <select
+                      value={propertyDraft.category}
+                      onChange={(e) => onPropertyDraftChange({ category: e.target.value })}
+                      className="w-full rounded-2xl border border-slate-200 px-4 py-3"
+                    >
+                      {propertyDraft.type === 'rent' ? (
+                        <>
+                          <option value="apartment">Apartment</option>
+                          <option value="bedsitter">Bedsitter</option>
+                          <option value="1-bedroom">1 Bedroom</option>
+                          <option value="shop">Shop</option>
+                          <option value="commercial">Commercial</option>
+                        </>
+                      ) : (
+                        <>
+                          <option value="plot">Plot</option>
+                          <option value="house">House</option>
+                          <option value="commercial">Commercial</option>
+                        </>
+                      )}
+                    </select>
+                  </div>
+
+                  {/* Location with Map */}
+                  <div>
+                    <label className="block text-sm font-semibold text-slate-600 mb-2">Location</label>
                     <input
                       value={propertyDraft.location}
-                      onChange={(e) => onPropertyDraftChange({ location: e.target.value })}
+                      onChange={(e) => {
+                        onPropertyDraftChange({ location: e.target.value });
+                        setMapLocation(e.target.value);
+                      }}
                       className="w-full rounded-2xl border border-slate-200 px-4 py-3"
+                      placeholder="e.g., Westlands, Nairobi"
                     />
-                    <p className="text-xs text-slate-500 mt-2">Use a Google Maps search string or address instead of raw coordinates.</p>
-                    <a href={getGoogleMapsSearchUrl(propertyDraft.location)} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 mt-2 text-emerald-600 hover:underline">
-                      Open location in Google Maps
+                    <a 
+                      href={getGoogleMapsSearchUrl(propertyDraft.location)} 
+                      target="_blank" 
+                      rel="noreferrer" 
+                      className="inline-flex items-center gap-2 mt-2 text-emerald-600 hover:underline text-sm"
+                    >
+                      <MapPin size={14} />
+                      Preview location on Google Maps
                     </a>
                   </div>
-                  <div>
-                    <label className="block text-sm font-semibold text-slate-600 mb-2">Price</label>
-                    <input
-                      type="number"
-                      value={propertyDraft.price}
-                      onChange={(e) => onPropertyDraftChange({ price: Number(e.target.value) })}
-                      className="w-full rounded-2xl border border-slate-200 px-4 py-3"
-                    />
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-semibold text-slate-600 mb-2">Price (Ksh)</label>
+                      <input
+                        type="number"
+                        value={propertyDraft.price}
+                        onChange={(e) => onPropertyDraftChange({ price: Number(e.target.value) })}
+                        className="w-full rounded-2xl border border-slate-200 px-4 py-3"
+                        placeholder="e.g., 25000"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-semibold text-slate-600 mb-2">Status</label>
+                      <select
+                        value={propertyDraft.status}
+                        onChange={(e) => onPropertyDraftChange({ status: e.target.value as Property['status'] })}
+                        className="w-full rounded-2xl border border-slate-200 px-4 py-3"
+                      >
+                        <option value="Available">Available</option>
+                        <option value="Under Offer">Under Offer</option>
+                        <option value="Sold">Sold</option>
+                        <option value="Rented">Rented</option>
+                        <option value="Unavailable">Unavailable</option>
+                      </select>
+                    </div>
                   </div>
+
+                  {/* Property Details */}
+                  {propertyDraft.type === 'rent' && (
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div>
+                        <label className="block text-sm font-semibold text-slate-600 mb-2">Bedrooms</label>
+                        <input
+                          type="number"
+                          value={propertyDraft.bedrooms ?? ''}
+                          onChange={(e) => onPropertyDraftChange({ bedrooms: Number(e.target.value) })}
+                          className="w-full rounded-2xl border border-slate-200 px-4 py-3"
+                          placeholder="0 for studio"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-semibold text-slate-600 mb-2">Bathrooms</label>
+                        <input
+                          type="number"
+                          value={propertyDraft.bathrooms ?? ''}
+                          onChange={(e) => onPropertyDraftChange({ bathrooms: Number(e.target.value) })}
+                          className="w-full rounded-2xl border border-slate-200 px-4 py-3"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-semibold text-slate-600 mb-2">Size (sqft)</label>
+                        <input
+                          type="number"
+                          value={propertyDraft.sqft ?? ''}
+                          onChange={(e) => onPropertyDraftChange({ sqft: Number(e.target.value) })}
+                          className="w-full rounded-2xl border border-slate-200 px-4 py-3"
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  {propertyDraft.type === 'sale' && (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-semibold text-slate-600 mb-2">Plot Size</label>
+                        <input
+                          value={propertyDraft.plotSize ?? ''}
+                          onChange={(e) => onPropertyDraftChange({ plotSize: e.target.value })}
+                          className="w-full rounded-2xl border border-slate-200 px-4 py-3"
+                          placeholder="e.g., 50x100 ft"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-semibold text-slate-600 mb-2">Zoning</label>
+                        <input
+                          value={propertyDraft.zoning ?? ''}
+                          onChange={(e) => onPropertyDraftChange({ zoning: e.target.value })}
+                          className="w-full rounded-2xl border border-slate-200 px-4 py-3"
+                          placeholder="e.g., Residential"
+                        />
+                      </div>
+                    </div>
+                  )}
+
                   <div>
                     <label className="block text-sm font-semibold text-slate-600 mb-2">Description</label>
                     <textarea
                       value={propertyDraft.description}
                       onChange={(e) => onPropertyDraftChange({ description: e.target.value })}
-                      className="w-full rounded-2xl border border-slate-200 px-4 py-3 h-28"
+                      className="w-full rounded-2xl border border-slate-200 px-4 py-3 h-32"
+                      placeholder="Describe the property..."
                     />
                   </div>
+
+                  {/* Images */}
                   <div>
-                    <label className="block text-sm font-semibold text-slate-600 mb-2">Status</label>
-                    <select
-                      value={propertyDraft.status}
-                      onChange={(e) => onPropertyDraftChange({ status: e.target.value as Property['status'] })}
+                    <label className="block text-sm font-semibold text-slate-600 mb-2">Main Image URL</label>
+                    <input
+                      value={propertyDraft.img}
+                      onChange={(e) => onPropertyDraftChange({ img: e.target.value })}
                       className="w-full rounded-2xl border border-slate-200 px-4 py-3"
-                    >
-                      <option value="Available">Available</option>
-                      <option value="Under Offer">Under Offer</option>
-                      <option value="Sold">Sold</option>
-                      <option value="Rented">Rented</option>
-                      <option value="Unavailable">Unavailable</option>
-                    </select>
+                      placeholder="https://..."
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-semibold text-slate-600 mb-2">Additional Images (comma-separated URLs)</label>
+                    <textarea
+                      value={propertyDraft.images?.join(', ') ?? ''}
+                      onChange={(e) => onPropertyDraftChange({ images: e.target.value.split(',').map(s => s.trim()).filter(Boolean) })}
+                      className="w-full rounded-2xl border border-slate-200 px-4 py-3 h-20"
+                      placeholder="https://image1.jpg, https://image2.jpg"
+                    />
+                  </div>
+
+                  {/* Amenities */}
+                  <div>
+                    <label className="block text-sm font-semibold text-slate-600 mb-2">Amenities (comma-separated)</label>
+                    <textarea
+                      value={propertyDraft.amenities?.join(', ') ?? ''}
+                      onChange={(e) => onPropertyDraftChange({ amenities: e.target.value.split(',').map(s => s.trim()).filter(Boolean) })}
+                      className="w-full rounded-2xl border border-slate-200 px-4 py-3 h-20"
+                      placeholder="WiFi, Parking, Security, Pool"
+                    />
+                  </div>
+
+                  {/* Tags */}
+                  <div>
+                    <label className="block text-sm font-semibold text-slate-600 mb-2">Tags (comma-separated)</label>
+                    <input
+                      value={propertyDraft.tags?.join(', ') ?? ''}
+                      onChange={(e) => onPropertyDraftChange({ tags: e.target.value.split(',').map(s => s.trim()).filter(Boolean) })}
+                      className="w-full rounded-2xl border border-slate-200 px-4 py-3"
+                      placeholder="luxury, modern, city-view"
+                    />
+                  </div>
+
+                  {/* Virtual Tour */}
+                  <div>
+                    <label className="block text-sm font-semibold text-slate-600 mb-2">Virtual Tour URL (optional)</label>
+                    <input
+                      value={propertyDraft.virtualTourUrl ?? ''}
+                      onChange={(e) => onPropertyDraftChange({ virtualTourUrl: e.target.value })}
+                      className="w-full rounded-2xl border border-slate-200 px-4 py-3"
+                      placeholder="https://..."
+                    />
                   </div>
                   <div className="space-y-4 rounded-3xl border border-slate-200 bg-slate-50 p-4">
                     <h4 className="text-lg font-bold text-slate-900">Video Tour</h4>
@@ -2603,6 +3101,60 @@ const AdminPanel = ({
             </div>
           </section>
         </div>
+
+        {/* Delete Confirmation Modal */}
+        {showDeleteConfirm && (
+          <div className="fixed inset-0 z-[220] bg-slate-900/90 backdrop-blur-md flex items-center justify-center p-4">
+            <div className="bg-white rounded-[2rem] p-8 max-w-md w-full">
+              <h3 className="text-2xl font-bold text-slate-900 mb-4">Delete Property?</h3>
+              <p className="text-slate-600 mb-6">Are you sure you want to delete this property? This action cannot be undone.</p>
+              <div className="flex gap-4">
+                <button
+                  onClick={() => setShowDeleteConfirm(null)}
+                  className="flex-1 bg-slate-100 text-slate-700 px-4 py-3 rounded-xl font-bold hover:bg-slate-200 transition-all"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={async () => {
+                    await onDeleteProperty(showDeleteConfirm);
+                    setShowDeleteConfirm(null);
+                  }}
+                  className="flex-1 bg-red-600 text-white px-4 py-3 rounded-xl font-bold hover:bg-red-700 transition-all"
+                >
+                  Delete
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Add Property Modal */}
+        {showAddProperty && (
+          <div className="fixed inset-0 z-[220] bg-slate-900/90 backdrop-blur-md flex items-center justify-center p-4 overflow-y-auto">
+            <div className="bg-white rounded-[2rem] p-8 max-w-2xl w-full my-8">
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-2xl font-bold text-slate-900">Add New Property</h3>
+                <button onClick={() => setShowAddProperty(false)} className="p-2 hover:bg-slate-100 rounded-full">
+                  <X size={24} />
+                </button>
+              </div>
+              <div className="space-y-4 max-h-[70vh] overflow-y-auto pr-2">
+                <p className="text-slate-600 mb-4">Fill in the property details below. You can edit them later.</p>
+                <button
+                  onClick={() => {
+                    onAddProperty();
+                    setShowAddProperty(false);
+                  }}
+                  className="w-full bg-emerald-600 text-white py-4 rounded-2xl font-bold hover:bg-emerald-700 transition-all"
+                >
+                  Create Property
+                </button>
+                <p className="text-xs text-slate-500 text-center">A new property will be created with default values. You can edit all details after creation.</p>
+              </div>
+            </div>
+          </div>
+        )}
       </motion.div>
     </motion.div>
   );
@@ -2658,8 +3210,19 @@ const Testimonials = ({ config }: { config: SiteConfig }) => {
   };
 
   return (
-    <section className="py-24 bg-slate-50 overflow-hidden">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <section className="py-24 bg-slate-50 overflow-hidden relative">
+      {/* Background Image with Overlay */}
+      <div className="absolute inset-0 z-0">
+        <img 
+          src={config.testimonialsBgImage || "https://images.unsplash.com/photo-1600880292203-757bb62b4baf?w=1920&q=80"} 
+          alt="Testimonials Background" 
+          className="w-full h-full object-cover"
+          referrerPolicy="no-referrer"
+        />
+        <div className="absolute inset-0 bg-slate-50/10"></div>
+      </div>
+      
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
         <div className="text-center mb-16">
           <h2 className="text-4xl font-extrabold text-slate-900 mb-4">Client Testimonials</h2>
           <p className="text-slate-500 max-w-2xl mx-auto">Hear from our satisfied clients about their experiences with LPHASK Homes & Properties.</p>
@@ -2835,6 +3398,28 @@ export default function App() {
     setAdminError(null);
   };
 
+  const handleAdminGoogleLogin = async (credential: string) => {
+    try {
+      const response = await fetch('/api/admin/google-login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ credential }),
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        setAdminError(data.error || 'Unable to authenticate with Google.');
+        return;
+      }
+      setIsAdminAuthenticated(true);
+      setAdminError(null);
+      openAdminPanel();
+    } catch (error) {
+      console.error(error);
+      setAdminError('Unable to authenticate with Google.');
+    }
+  };
+
   const handleAdminLogin = async (password: string) => {
     try {
       const response = await fetch('/api/admin/login', {
@@ -2959,6 +3544,56 @@ export default function App() {
     }
   };
 
+  const handleAddProperty = () => {
+    const newId = `P${Date.now()}`;
+    const newProperty: Property = {
+      id: newId,
+      title: 'New Property',
+      price: 0,
+      location: 'Location',
+      img: 'https://picsum.photos/seed/' + newId + '/800/600',
+      images: [],
+      type: 'rent',
+      category: 'apartment',
+      bedrooms: 1,
+      bathrooms: 1,
+      sqft: 500,
+      amenities: [],
+      lat: -1.286389,
+      lng: 36.817223,
+      description: 'Property description',
+      status: 'Available',
+      tags: [],
+    };
+    setProperties([...properties, newProperty]);
+    setSelectedAdminPropertyId(newId);
+    setAdminPropertyDraft(newProperty);
+  };
+
+  const handleDeleteProperty = async (id: string) => {
+    try {
+      const response = await fetch('/api/admin/delete-property', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ id }),
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.error || 'Unable to delete property.');
+      }
+      setProperties((prev) => prev.filter((item) => item.id !== id));
+      if (selectedAdminPropertyId === id) {
+        const remaining = properties.filter((item) => item.id !== id);
+        setSelectedAdminPropertyId(remaining[0]?.id ?? null);
+        setAdminPropertyDraft(remaining[0] ?? null);
+      }
+    } catch (error) {
+      console.error(error);
+      setAdminError('Unable to delete property.');
+    }
+  };
+
   const handleSaveProperty = async (property: Property) => {
     try {
       const updates = {
@@ -3019,6 +3654,28 @@ export default function App() {
     } finally {
       setIsUploadingVideo(false);
     }
+  };
+
+  const handleUploadBackgroundImage = async (key: string, file: File | null) => {
+    if (!file) {
+      throw new Error('Please select an image file before uploading.');
+    }
+
+    const formData = new FormData();
+    formData.append('key', key);
+    formData.append('image', file);
+    const response = await fetch('/api/admin/upload-image', {
+      method: 'POST',
+      body: formData,
+      credentials: 'include',
+    });
+    const data = await response.json();
+    if (!response.ok) {
+      throw new Error(data.error || 'Unable to upload image.');
+    }
+    setConfig(data.settings);
+    setAdminSettingsDraft(data.settings);
+    return data;
   };
 
   const filteredAdminProperties = useMemo(() => {
@@ -3127,6 +3784,7 @@ export default function App() {
           userLocation={userLocation}
           onRequestViewing={setViewingRequestProperty}
           onRequestInfo={setInfoRequestProperty}
+          config={config}
         />
         <Listings 
           type="sale" 
@@ -3137,6 +3795,7 @@ export default function App() {
           userLocation={userLocation}
           onRequestViewing={setViewingRequestProperty}
           onRequestInfo={setInfoRequestProperty}
+          config={config}
         />
       </div>
 
@@ -3152,12 +3811,15 @@ export default function App() {
       />
 
       {showAdminLogin && !showAdminPanel && (
-        <AdminLoginModal
-          onClose={() => setShowAdminLogin(false)}
-          onLogin={handleAdminLogin}
-          onForgot={handleOpenAdminReset}
-          error={adminError ?? undefined}
-        />
+        <GoogleOAuthProvider clientId={import.meta.env.VITE_GOOGLE_CLIENT_ID || ''}>
+          <AdminLoginModal
+            onClose={() => setShowAdminLogin(false)}
+            onLogin={handleAdminLogin}
+            onGoogleLogin={handleAdminGoogleLogin}
+            onForgot={handleOpenAdminReset}
+            error={adminError ?? undefined}
+          />
+        </GoogleOAuthProvider>
       )}
 
       {resetMode !== 'idle' && !showAdminPanel && (
@@ -3187,6 +3849,8 @@ export default function App() {
           onSaveProperty={async (property) => {
             if (property) await handleSaveProperty(property);
           }}
+          onUploadVideo={handleUploadPropertyVideo}
+          onUploadBackgroundImage={handleUploadBackgroundImage}
           onChangePassword={handleChangeAdminPassword}
           onLogout={handleAdminLogout}
           onClose={closeAdminPanel}
@@ -3202,6 +3866,8 @@ export default function App() {
           setSelectedVideoFile={setSelectedVideoFile}
           uploadError={uploadError}
           isUploadingVideo={isUploadingVideo}
+          onAddProperty={handleAddProperty}
+          onDeleteProperty={handleDeleteProperty}
         />
       )}
 
