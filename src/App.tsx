@@ -1,0 +1,3256 @@
+/**
+ * @license
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+import { motion, AnimatePresence } from "motion/react";
+import { 
+  Home, 
+  Building2, 
+  Camera, 
+  Video, 
+  HardHat, 
+  MapPin, 
+  Phone, 
+  Mail, 
+  Clock, 
+  CheckCircle2, 
+  ArrowRight,
+  Menu,
+  X,
+  Facebook,
+  Instagram,
+  Twitter,
+  Train,
+  Search,
+  Filter,
+  Bed,
+  Bath,
+  Maximize,
+  Calendar,
+  Layers,
+  Navigation,
+  Scale,
+  ChevronLeft,
+  ChevronRight,
+  ExternalLink,
+  Eye,
+  Info,
+  Plus,
+  Minus,
+  Tag,
+  Check,
+  Layout,
+  MessageSquare
+} from "lucide-react";
+import React, { useState, useEffect, useMemo, useCallback, useRef } from "react";
+import { AIChatBot } from "./components/AIChatBot";
+
+// --- Types ---
+interface Property {
+  id: string;
+  title: string;
+  price: number;
+  location: string;
+  img: string;
+  images: string[];
+  type: 'rent' | 'sale';
+  category: string;
+  bedrooms?: number;
+  bathrooms?: number;
+  sqft?: number;
+  amenities?: string[];
+  leaseDuration?: string;
+  plotSize?: string;
+  zoning?: string;
+  lat?: number;
+  lng?: number;
+  description: string;
+  virtualTourUrl?: string;
+  videoTourUrl?: string;
+  tags?: string[];
+  status: 'Available' | 'Under Offer' | 'Sold' | 'Rented' | 'Unavailable';
+}
+
+interface Testimonial {
+  id: string;
+  name: string;
+  role: string;
+  content: string;
+  photo: string;
+  rating: number;
+  date: string;
+}
+
+interface SiteConfig {
+  siteName: string;
+  siteNameSecondary: string;
+  heroTitle: string;
+  heroSubtitle: string;
+  heroBadge: string;
+  contactPhone: string;
+  contactEmail: string;
+  contactAddress: string;
+  socialLinks: {
+    facebook: string;
+    instagram: string;
+    twitter: string;
+  };
+  siteDescription: string;
+  heroBgImage: string;
+  viewingFee: string;
+  adminEmail: string;
+  propertiesManaged: string;
+  happyClients: string;
+  yearsExperience: string;
+  secureTransactions: string;
+  services: {
+    id: string;
+    title: string;
+    desc: string;
+    icon: string;
+    color: string;
+  }[];
+  testimonials: Testimonial[];
+  officeWorkingHours: string;
+}
+
+// --- Data ---
+const INITIAL_CONFIG: SiteConfig = {
+  siteName: "LPHASK",
+  siteNameSecondary: "HOMES",
+  heroTitle: "",
+  heroSubtitle: "",
+  heroBadge: "",
+  contactPhone: "",
+  contactEmail: "",
+  contactAddress: "",
+  officeWorkingHours: "",
+  adminEmail: "",
+  propertiesManaged: "500+",
+  happyClients: "1.2k",
+  yearsExperience: "15+",
+  secureTransactions: "100%",
+  socialLinks: {
+    facebook: "",
+    instagram: "",
+    twitter: ""
+  },
+  siteDescription: "",
+  heroBgImage: "",
+  viewingFee: "",
+  services: [],
+  testimonials: []
+};
+
+const PROPERTIES: Property[] = []; // Property inventory is loaded from the secure backend store.
+
+// --- SEO & Structured Data ---
+const SEOData = ({ config }: { config: SiteConfig }) => {
+  const structuredData = {
+    "@context": "https://schema.org",
+    "@type": "RealEstateAgent",
+    "name": `${config.siteName} ${config.siteNameSecondary}`,
+    "description": config.heroSubtitle,
+    "url": window.location.href,
+    "telephone": config.contactPhone,
+    "address": {
+      "@type": "PostalAddress",
+      "addressLocality": "Nairobi", // Based on common Kenyan real estate context
+      "addressCountry": "KE"
+    },
+    "openingHours": "Mo-Sa 08:00-18:00",
+    "priceRange": "$$",
+    "image": "https://picsum.photos/seed/lphask/800/600",
+    "service": config.services.map(s => s.title)
+  };
+
+  return (
+    <script type="application/ld+json">
+      {JSON.stringify(structuredData)}
+    </script>
+  );
+};
+
+// --- Components ---
+
+const IconRenderer = ({ name, className, size = 24 }: { name: string, className?: string, size?: number }) => {
+  const icons: Record<string, any> = {
+    Building2, HardHat, Camera, Train, Home, Phone, Mail, Clock, MapPin, Facebook, Instagram, Twitter, Video, Eye, Info, CheckCircle2
+  };
+  const Icon = icons[name] || Home;
+  return <Icon className={className} size={size} />;
+};
+
+const Navbar = ({ onSearch, onBookViewing, config }: { onSearch: (val: string) => void, onBookViewing: () => void, config: SiteConfig }) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
+
+  useEffect(() => {
+    const handleScroll = () => setScrolled(window.scrollY > 20);
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
+
+  const navLinks: Array<{ name: string; href: string; onClick?: (e: React.MouseEvent<HTMLAnchorElement>) => void }> = [
+    { name: "Home", href: "#home" },
+    { name: "Services", href: "#services" },
+    { name: "Rentals", href: "#rentals" },
+    { name: "Sales", href: "#sales" },
+    { name: "Contact", href: "#contact" },
+  ];
+
+  return (
+    <nav className={`fixed w-full z-50 transition-all duration-300 ${scrolled ? "bg-white shadow-md py-2" : "bg-transparent py-4"}`}>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="flex justify-between items-center">
+          <div className="flex items-center">
+            <span className="text-2xl font-extrabold tracking-tighter">
+              <span className="text-emerald-700">{config.siteName}</span>
+              <span className="text-red-700 ml-1">{config.siteNameSecondary}</span>
+            </span>
+          </div>
+          
+          {/* Desktop Nav */}
+          <div className="hidden md:flex items-center space-x-8">
+            {scrolled && (
+              <div className="relative flex items-center bg-slate-100 rounded-full px-4 py-1.5 border border-slate-200">
+                <Search size={16} className="text-slate-400 mr-2" />
+                <input 
+                  type="text" 
+                  placeholder="Quick search..." 
+                  className="bg-transparent text-sm text-slate-900 focus:outline-none w-32 focus:w-48 transition-all"
+                  onChange={(e) => onSearch(e.target.value)}
+                />
+              </div>
+            )}
+            {navLinks.map((link) => (
+              <a 
+                key={link.name} 
+                href={link.href} 
+                onClick={link.onClick}
+                className={`text-sm font-semibold hover:text-emerald-700 transition-colors ${scrolled ? "text-slate-700" : "text-white"}`}
+              >
+                {link.name}
+              </a>
+            ))}
+            <button onClick={onBookViewing} className="bg-emerald-700 text-white px-5 py-2 rounded-full text-sm font-bold hover:bg-emerald-800 transition-all shadow-lg shadow-emerald-700/20">
+              Book Viewing
+            </button>
+          </div>
+
+          {/* Mobile Toggle */}
+          <div className="md:hidden flex items-center">
+            <button onClick={() => setIsOpen(!isOpen)} className={scrolled ? "text-slate-900" : "text-white"}>
+              {isOpen ? <X size={28} /> : <Menu size={28} />}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Mobile Menu */}
+      <AnimatePresence>
+        {isOpen && (
+          <motion.div 
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            exit={{ opacity: 0, height: 0 }}
+            className="md:hidden bg-white border-t border-slate-100 shadow-xl overflow-hidden"
+          >
+            <div className="px-4 pt-4 pb-6 space-y-4">
+              <div className="relative flex items-center bg-slate-100 rounded-xl px-4 py-3 border border-slate-200">
+                <Search size={20} className="text-slate-400 mr-2" />
+                <input 
+                  type="text" 
+                  placeholder="Search properties..." 
+                  className="bg-transparent text-base text-slate-900 focus:outline-none w-full"
+                  onChange={(e) => onSearch(e.target.value)}
+                />
+              </div>
+              <div className="space-y-1">
+                {navLinks.map((link) => (
+                  <a 
+                    key={link.name} 
+                    href={link.href} 
+                    onClick={(e) => {
+                      setIsOpen(false);
+                      if (link.onClick) link.onClick(e);
+                    }}
+                    className="block px-3 py-4 text-base font-medium text-slate-700 hover:text-emerald-700 hover:bg-slate-50 rounded-lg"
+                  >
+                    {link.name}
+                  </a>
+                ))}
+              </div>
+              <button onClick={onBookViewing} className="w-full mt-4 bg-emerald-700 text-white px-5 py-3 rounded-xl text-base font-bold">
+                Book Viewing
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </nav>
+  );
+};
+
+const Hero = ({ onSearch, properties, config }: { onSearch: (val: string) => void, properties: Property[], config: SiteConfig }) => {
+  const [searchValue, setSearchValue] = useState("");
+  const [showSuggestions, setShowSuggestions] = useState(false);
+
+  const suggestions = useMemo(() => {
+    if (!searchValue.trim()) return [];
+    const q = searchValue.toLowerCase();
+    const matches = new Set<string>();
+    
+    properties.forEach(p => {
+      if (p.title.toLowerCase().includes(q)) matches.add(p.title);
+      if (p.location.toLowerCase().includes(q)) matches.add(p.location);
+    });
+    
+    return Array.from(matches).slice(0, 5);
+  }, [searchValue, properties]);
+
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    onSearch(searchValue);
+    setShowSuggestions(false);
+    const listingsSection = document.getElementById('listings-container');
+    if (listingsSection) {
+      listingsSection.scrollIntoView({ behavior: 'smooth' });
+    }
+  };
+
+  const handleSuggestionClick = (suggestion: string) => {
+    setSearchValue(suggestion);
+    onSearch(suggestion);
+    setShowSuggestions(false);
+    const listingsSection = document.getElementById('listings-container');
+    if (listingsSection) {
+      listingsSection.scrollIntoView({ behavior: 'smooth' });
+    }
+  };
+
+  return (
+    <section id="home" className="relative h-screen flex items-center overflow-hidden">
+      {/* Background Image with Overlay */}
+      <div className="absolute inset-0 z-0">
+        <img 
+          src={config.heroBgImage} 
+          alt="Hero Background" 
+          className="w-full h-full object-cover"
+          referrerPolicy="no-referrer"
+        />
+        <div className="absolute inset-0 bg-gradient-to-r from-slate-900/90 via-slate-900/60 to-transparent"></div>
+      </div>
+
+      <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-20 pb-28">
+        <motion.div 
+          initial={{ opacity: 0, x: -50 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.8 }}
+          className="max-w-2xl"
+        >
+          <span className="inline-block px-4 py-1.5 mb-6 text-xs font-bold tracking-widest text-white uppercase bg-red-700 rounded-full">
+            {config.heroBadge}
+          </span>
+          <h1 className="text-5xl md:text-7xl font-extrabold text-white leading-tight mb-6">
+            {config.heroTitle.split(' ').map((word, i) => (
+              word.toLowerCase() === 'premium' ? <span key={i} className="text-emerald-500"> {word} </span> : ` ${word} `
+            ))}
+          </h1>
+          <p className="text-lg md:text-xl text-slate-300 mb-10 leading-relaxed">
+            {config.heroSubtitle}
+          </p>
+          
+          {/* Search Bar */}
+          <div className="relative mb-10">
+            <form onSubmit={handleSearch} className="flex flex-col sm:flex-row gap-2 bg-white/10 backdrop-blur-md p-2 rounded-2xl border border-white/20 shadow-2xl shadow-emerald-900/40">
+              <div className="flex-1 flex items-center px-4 py-3 bg-white rounded-xl">
+                <Search className="text-slate-400 mr-2" size={20} />
+                <input 
+                  type="text" 
+                  placeholder="Search by location, type, or ID (e.g. R1)..." 
+                  className="w-full bg-transparent text-slate-900 focus:outline-none placeholder:text-slate-400 font-medium"
+                  value={searchValue}
+                  onChange={(e) => {
+                    setSearchValue(e.target.value);
+                    setShowSuggestions(true);
+                  }}
+                  onFocus={() => setShowSuggestions(true)}
+                />
+              </div>
+              <button type="submit" className="bg-emerald-600 text-white px-8 py-3 rounded-xl font-bold hover:bg-emerald-700 transition-all flex items-center justify-center gap-2">
+                <Search size={18} />
+                Search Properties
+              </button>
+            </form>
+
+            {/* Suggestions Dropdown */}
+            <AnimatePresence>
+              {showSuggestions && suggestions.length > 0 && (
+                <motion.div 
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                  className="absolute top-full left-0 right-0 mt-2 bg-white rounded-2xl shadow-2xl overflow-hidden z-50 border border-slate-100"
+                >
+                  {suggestions.map((suggestion, idx) => (
+                    <button
+                      key={idx}
+                      onClick={() => handleSuggestionClick(suggestion)}
+                      className="w-full px-6 py-4 text-left hover:bg-slate-50 flex items-center gap-3 text-slate-700 font-medium transition-colors border-b border-slate-50 last:border-0"
+                    >
+                      <MapPin size={16} className="text-emerald-600" />
+                      {suggestion}
+                    </button>
+                  ))}
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+
+          <div className="flex flex-col sm:flex-row gap-4">
+            <a href="#rentals" className="flex items-center justify-center bg-emerald-600 text-white px-8 py-4 rounded-xl font-bold text-lg hover:bg-emerald-700 transition-all shadow-xl shadow-emerald-600/20 group">
+              Explore Rentals
+              <ArrowRight className="ml-2 group-hover:translate-x-1 transition-transform" size={20} />
+            </a>
+            <a href="#contact" className="flex items-center justify-center bg-white/10 backdrop-blur-md border border-white/20 text-white px-8 py-4 rounded-xl font-bold text-lg hover:bg-white/20 transition-all">
+              Contact Us
+            </a>
+          </div>
+        </motion.div>
+      </div>
+
+      {/* Stats Overlay */}
+      <div className="absolute bottom-20 left-0 right-0 bg-white/5 backdrop-blur-xl border-t border-white/10 py-8 hidden lg:block">
+        <div className="max-w-7xl mx-auto px-4 grid grid-cols-2 xl:grid-cols-4 gap-4 text-white">
+          <div className="text-center rounded-3xl bg-slate-950/80 p-6 border border-white/10 shadow-xl">
+            <div className="text-3xl font-bold">{config.propertiesManaged || '500+'}</div>
+            <div className="text-slate-400 text-sm mt-2">Properties Managed</div>
+          </div>
+          <div className="text-center rounded-3xl bg-slate-950/80 p-6 border border-white/10 shadow-xl">
+            <div className="text-3xl font-bold">{config.happyClients || '1.2k'}</div>
+            <div className="text-slate-400 text-sm mt-2">Happy Clients</div>
+          </div>
+          <div className="text-center rounded-3xl bg-slate-950/80 p-6 border border-white/10 shadow-xl">
+            <div className="text-3xl font-bold">{config.yearsExperience || '15+'}</div>
+            <div className="text-slate-400 text-sm mt-2">Years Experience</div>
+          </div>
+          <div className="text-center rounded-3xl bg-slate-950/80 p-6 border border-white/10 shadow-xl">
+            <div className="text-3xl font-bold">{config.secureTransactions || '100%'}</div>
+            <div className="text-slate-400 text-sm mt-2">Secure Transactions</div>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+};
+
+const Services = ({ onSelectService, config }: { onSelectService: (service: string) => void, config: SiteConfig }) => {
+  return (
+    <section id="services" className="py-24 bg-slate-50">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="text-center mb-16">
+          <h2 className="text-emerald-700 font-bold tracking-widest uppercase text-sm mb-4">Our Expertise</h2>
+          <h3 className="text-4xl font-extrabold text-slate-900">Comprehensive Home Solutions</h3>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+          {config.services.map((service, idx) => (
+            <motion.div 
+              key={idx}
+              whileHover={{ y: -10 }}
+              className="bg-white p-8 rounded-3xl shadow-sm border border-slate-100 hover:shadow-xl transition-all flex flex-col"
+            >
+              <div className={`w-16 h-16 ${service.color} rounded-2xl flex items-center justify-center mb-6`}>
+                <IconRenderer name={service.icon} className={service.color.replace('bg-', 'text-').replace('-50', '-600')} size={32} />
+              </div>
+              <h4 className="text-xl font-bold text-slate-900 mb-4">{service.title}</h4>
+              <p className="text-slate-600 leading-relaxed mb-6 flex-1">{service.desc}</p>
+              <button 
+                onClick={() => onSelectService(service.id)}
+                className="flex items-center text-emerald-700 font-bold hover:gap-2 transition-all"
+              >
+                Book Service <ArrowRight size={18} className="ml-1" />
+              </button>
+            </motion.div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+};
+
+// --- Helper Functions ---
+const getDistance = (lat1: number, lon1: number, lat2: number, lon2: number) => {
+  const R = 6371; // Radius of the earth in km
+  const dLat = deg2rad(lat2 - lat1);
+  const dLon = deg2rad(lon2 - lon1);
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(deg2rad(lat1)) * Math.cos(deg2rad(lat2)) *
+    Math.sin(dLon / 2) * Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  const d = R * c; // Distance in km
+  return d;
+};
+
+const deg2rad = (deg: number) => deg * (Math.PI / 180);
+
+// --- Components ---
+
+const RequestInfoModal = ({ property, onClose }: { property: Property, onClose: () => void }) => {
+  const [formData, setFormData] = useState({
+    name: "",
+    email: "",
+    phone: "",
+    message: ""
+  });
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isSuccess, setIsSuccess] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    containerRef.current?.focus();
+  }, []);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    setIsSubmitting(true);
+
+    try {
+      const response = await fetch('/api/info-request', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: formData.name,
+          email: formData.email,
+          phone: formData.phone,
+          message: formData.message,
+          propertyId: property.id,
+          propertyTitle: property.title
+        }),
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.error || 'Unable to submit your request.');
+      }
+      setIsSuccess(true);
+      setTimeout(onClose, 2000);
+    } catch (err) {
+      console.error(err);
+      setError('Unable to submit your inquiry at this time. Please try again later.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  return (
+    <motion.div 
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 z-[200] bg-slate-900/90 backdrop-blur-md flex items-center justify-center p-4"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="info-modal-title"
+      tabIndex={-1}
+      ref={containerRef}
+    >
+      <motion.div 
+        initial={{ scale: 0.9, y: 20 }}
+        animate={{ scale: 1, y: 0 }}
+        className="bg-white w-full max-w-lg rounded-[3rem] overflow-hidden shadow-2xl relative p-8 md:p-12"
+      >
+        <button onClick={onClose} aria-label="Close inquiry form" className="absolute top-8 right-8 p-2 hover:bg-slate-100 rounded-full transition-colors">
+          <X size={24} />
+        </button>
+
+        {isSuccess ? (
+          <div className="text-center py-12">
+            <div className="w-20 h-20 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-6">
+              <CheckCircle2 size={40} />
+            </div>
+            <h3 id="info-modal-title" className="text-3xl font-extrabold text-slate-900 mb-2">Inquiry Sent!</h3>
+            <p className="text-slate-500">We'll get back to you with more information about <span className="font-bold">{property.title}</span> shortly.</p>
+          </div>
+        ) : (
+          <>
+            <div className="mb-8">
+              <h3 id="info-modal-title" className="text-3xl font-extrabold text-slate-900 mb-2">Request Info</h3>
+              <p className="text-slate-500">Inquire about <span className="font-bold text-emerald-600">{property.title}</span></p>
+            </div>
+
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div className="space-y-1">
+                <label htmlFor="info-name" className="text-xs font-bold text-slate-500 uppercase tracking-wider">Full Name</label>
+                <input 
+                  id="info-name"
+                  type="text" 
+                  required
+                  className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-emerald-500 outline-none transition-all"
+                  value={formData.name}
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                />
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <label htmlFor="info-email" className="text-xs font-bold text-slate-500 uppercase tracking-wider">Email Address</label>
+                  <input 
+                    id="info-email"
+                    type="email" 
+                    required
+                    className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-emerald-500 outline-none transition-all"
+                    value={formData.email}
+                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label htmlFor="info-phone" className="text-xs font-bold text-slate-500 uppercase tracking-wider">Phone Number</label>
+                  <input 
+                    id="info-phone"
+                    type="tel" 
+                    required
+                    className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-emerald-500 outline-none transition-all"
+                    value={formData.phone}
+                    onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                  />
+                </div>
+              </div>
+              <div className="space-y-1">
+                <label htmlFor="info-message" className="text-xs font-bold text-slate-500 uppercase tracking-wider">Your Question</label>
+                <textarea 
+                  id="info-message"
+                  className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-emerald-500 outline-none transition-all h-32 resize-none"
+                  placeholder="What would you like to know?"
+                  value={formData.message}
+                  onChange={(e) => setFormData({ ...formData, message: e.target.value })}
+                  required
+                />
+              </div>
+              {error && <p className="text-sm text-red-600">{error}</p>}
+              <button 
+                type="submit"
+                disabled={isSubmitting}
+                className="w-full bg-emerald-600 text-white py-4 rounded-2xl font-bold text-lg hover:bg-emerald-700 transition-all shadow-xl shadow-emerald-600/20 disabled:opacity-50 flex items-center justify-center"
+              >
+                {isSubmitting ? (
+                  <div className="w-6 h-6 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                ) : "Send Inquiry"}
+              </button>
+            </form>
+          </>
+        )}
+      </motion.div>
+    </motion.div>
+  );
+};
+
+const ViewingRequestModal = ({ property, onClose }: { property: Property, onClose: () => void }) => {
+  const [formData, setFormData] = useState({
+    name: "",
+    email: "",
+    phone: "",
+    date: "",
+    time: "",
+    message: ""
+  });
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isSuccess, setIsSuccess] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    containerRef.current?.focus();
+  }, []);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    setIsSubmitting(true);
+
+    try {
+      const response = await fetch('/api/viewing-request', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: formData.name,
+          email: formData.email,
+          phone: formData.phone,
+          date: formData.date,
+          time: formData.time,
+          message: formData.message,
+          propertyId: property.id,
+          propertyTitle: property.title
+        }),
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.error || 'Unable to submit your request.');
+      }
+      setIsSuccess(true);
+      setTimeout(onClose, 2000);
+    } catch (err) {
+      console.error(err);
+      setError('Unable to submit your viewing request at this time. Please try again later.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  return (
+    <motion.div 
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 z-[200] bg-slate-900/90 backdrop-blur-md flex items-center justify-center p-4"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="viewing-modal-title"
+      tabIndex={-1}
+      ref={containerRef}
+    >
+      <motion.div 
+        initial={{ scale: 0.9, y: 20 }}
+        animate={{ scale: 1, y: 0 }}
+        className="bg-white w-full max-w-lg rounded-[3rem] overflow-hidden shadow-2xl relative p-8 md:p-12"
+      >
+        <button onClick={onClose} aria-label="Close viewing request form" className="absolute top-8 right-8 p-2 hover:bg-slate-100 rounded-full transition-colors">
+          <X size={24} />
+        </button>
+
+        {isSuccess ? (
+          <div className="text-center py-12">
+            <div className="w-20 h-20 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-6">
+              <CheckCircle2 size={40} />
+            </div>
+            <h3 id="viewing-modal-title" className="text-3xl font-extrabold text-slate-900 mb-2">Request Sent!</h3>
+            <p className="text-slate-500">We'll contact you shortly to confirm your viewing.</p>
+          </div>
+        ) : (
+          <>
+            <div className="mb-8">
+              <h3 id="viewing-modal-title" className="text-3xl font-extrabold text-slate-900 mb-2">Request Viewing</h3>
+              <p className="text-slate-500">Schedule a visit for <span className="font-bold text-emerald-600">{property.title}</span></p>
+            </div>
+
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <label htmlFor="viewing-name" className="text-xs font-bold text-slate-500 uppercase tracking-wider">Full Name</label>
+                  <input 
+                    id="viewing-name"
+                    type="text" 
+                    required
+                    className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-emerald-500 outline-none transition-all"
+                    value={formData.name}
+                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label htmlFor="viewing-phone" className="text-xs font-bold text-slate-500 uppercase tracking-wider">Phone Number</label>
+                  <input 
+                    id="viewing-phone"
+                    type="tel" 
+                    required
+                    className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-emerald-500 outline-none transition-all"
+                    value={formData.phone}
+                    onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                  />
+                </div>
+              </div>
+              <div className="space-y-1">
+                <label htmlFor="viewing-email" className="text-xs font-bold text-slate-500 uppercase tracking-wider">Email Address</label>
+                <input 
+                  id="viewing-email"
+                    type="email" 
+                    required
+                    className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-emerald-500 outline-none transition-all"
+                    value={formData.email}
+                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                  />
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <label htmlFor="viewing-date" className="text-xs font-bold text-slate-500 uppercase tracking-wider">Preferred Date</label>
+                  <input 
+                    id="viewing-date"
+                    type="date" 
+                    required
+                    className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-emerald-500 outline-none transition-all"
+                    value={formData.date}
+                    onChange={(e) => setFormData({ ...formData, date: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label htmlFor="viewing-time" className="text-xs font-bold text-slate-500 uppercase tracking-wider">Preferred Time</label>
+                  <input 
+                    id="viewing-time"
+                    type="time" 
+                    required
+                    className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-emerald-500 outline-none transition-all"
+                    value={formData.time}
+                    onChange={(e) => setFormData({ ...formData, time: e.target.value })}
+                  />
+                </div>
+              </div>
+              <div className="space-y-1">
+                <label htmlFor="viewing-message" className="text-xs font-bold text-slate-500 uppercase tracking-wider">Additional Message</label>
+                <textarea 
+                  id="viewing-message"
+                  className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-emerald-500 outline-none transition-all h-24 resize-none"
+                  value={formData.message}
+                  onChange={(e) => setFormData({ ...formData, message: e.target.value })}
+                />
+              </div>
+              {error && <p className="text-sm text-red-600">{error}</p>}
+              <button 
+                type="submit" 
+                disabled={isSubmitting}
+                className="w-full bg-emerald-600 text-white py-4 rounded-2xl font-bold text-lg hover:bg-emerald-700 transition-all shadow-xl shadow-emerald-600/20 disabled:opacity-50"
+              >
+                {isSubmitting ? 'Sending Request...' : 'Confirm Request'}
+              </button>
+            </form>
+          </>
+        )}
+      </motion.div>
+    </motion.div>
+  );
+};
+
+const isVideoFileUrl = (url: string) => {
+  return /\.(mp4|webm|ogg)(\?.*)?$/i.test(url) || url.startsWith('data:video/');
+};
+
+const getEmbedUrl = (url: string) => {
+  if (!url) return null;
+  if (url.startsWith('data:video/')) return null; // Base64 video
+  if (isVideoFileUrl(url)) return null;
+  if (url.includes('youtube.com/watch?v=')) {
+    return url.replace('watch?v=', 'embed/');
+  }
+  if (url.includes('youtu.be/')) {
+    return url.replace('youtu.be/', 'youtube.com/embed/');
+  }
+  if (url.includes('vimeo.com/')) {
+    return url.replace('vimeo.com/', 'player.vimeo.com/video/');
+  }
+  return url;
+};
+
+const getGoogleMapsSearchUrl = (location: string) => {
+  return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(location)}`;
+};
+
+const PropertyDetail = ({ property, onClose, onRequestViewing, onRequestInfo }: { 
+  property: Property, 
+  onClose: () => void, 
+  onRequestViewing: (p: Property) => void,
+  onRequestInfo: (p: Property) => void
+}) => {
+  const [activeImg, setActiveImg] = useState(0);
+  const allImages = [property.img, ...(property.images || [])];
+
+  return (
+    <motion.div 
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 z-[100] bg-slate-950/95 backdrop-blur-xl overflow-y-auto"
+    >
+      <div className="max-w-6xl mx-auto px-4 py-12">
+        <button 
+          onClick={onClose}
+          className="mb-8 flex items-center text-white/70 hover:text-white transition-colors group"
+        >
+          <ChevronLeft className="mr-2 group-hover:-translate-x-1 transition-transform" />
+          Back to Listings
+        </button>
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
+          {/* Image Gallery */}
+          <div className="space-y-4">
+            <div className="relative aspect-[4/3] rounded-3xl overflow-hidden shadow-2xl">
+              <img 
+                src={allImages[activeImg]} 
+                alt={property.title} 
+                className="w-full h-full object-cover"
+                referrerPolicy="no-referrer"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent pointer-events-none"></div>
+            </div>
+            <div className="flex gap-4 overflow-x-auto pb-2 scrollbar-hide">
+              {allImages.map((img, idx) => (
+                <button 
+                  key={idx}
+                  onClick={() => setActiveImg(idx)}
+                  className={`relative flex-shrink-0 w-24 h-24 rounded-2xl overflow-hidden border-2 transition-all ${activeImg === idx ? 'border-emerald-500 scale-105' : 'border-transparent opacity-60 hover:opacity-100'}`}
+                >
+                  <img src={img} alt="" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Details */}
+          <div className="text-white">
+            <div className="flex flex-wrap gap-3 mb-6">
+              <span className="px-4 py-1.5 bg-emerald-600 rounded-full text-xs font-bold uppercase tracking-wider">
+                {property.type === 'rent' ? 'For Rent' : 'For Sale'}
+              </span>
+              <span className={`px-4 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider ${
+                property.status === 'Available' ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' :
+                property.status === 'Under Offer' ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30' :
+                'bg-red-500/20 text-red-400 border border-red-500/30'
+              }`}>
+                {property.status}
+              </span>
+              <span className="px-4 py-1.5 bg-white/10 rounded-full text-xs font-bold uppercase tracking-wider">
+                ID: {property.id}
+              </span>
+            </div>
+
+            <h1 className="text-4xl md:text-5xl font-extrabold mb-4">{property.title}</h1>
+            <div className="flex items-center text-white/60 mb-8 text-lg">
+              <MapPin className="mr-2 text-emerald-500" size={20} />
+              {property.location}
+            </div>
+
+            <div className="text-4xl font-black text-emerald-400 mb-10">
+              Ksh {property.price.toLocaleString()}
+              {property.type === 'rent' && <span className="text-xl font-normal text-white/40 ml-2">/ month</span>}
+            </div>
+
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-6 mb-12">
+              {property.bedrooms !== undefined && (
+                <div className="bg-white/5 p-4 rounded-2xl border border-white/10">
+                  <Bed className="text-emerald-500 mb-2" size={24} />
+                  <div className="text-white/40 text-xs uppercase font-bold">Bedrooms</div>
+                  <div className="text-xl font-bold">{property.bedrooms === 0 ? 'Studio' : property.bedrooms}</div>
+                </div>
+              )}
+              {property.bathrooms && (
+                <div className="bg-white/5 p-4 rounded-2xl border border-white/10">
+                  <Bath className="text-emerald-500 mb-2" size={24} />
+                  <div className="text-white/40 text-xs uppercase font-bold">Bathrooms</div>
+                  <div className="text-xl font-bold">{property.bathrooms}</div>
+                </div>
+              )}
+              {property.sqft && (
+                <div className="bg-white/5 p-4 rounded-2xl border border-white/10">
+                  <Maximize className="text-emerald-500 mb-2" size={24} />
+                  <div className="text-white/40 text-xs uppercase font-bold">Area</div>
+                  <div className="text-xl font-bold">{property.sqft} sqft</div>
+                </div>
+              )}
+              {property.plotSize && (
+                <div className="bg-white/5 p-4 rounded-2xl border border-white/10">
+                  <Maximize className="text-red-500 mb-2" size={24} />
+                  <div className="text-white/40 text-xs uppercase font-bold">Plot Size</div>
+                  <div className="text-xl font-bold">{property.plotSize}</div>
+                </div>
+              )}
+              {property.zoning && (
+                <div className="bg-white/5 p-4 rounded-2xl border border-white/10">
+                  <Layers className="text-amber-500 mb-2" size={24} />
+                  <div className="text-white/40 text-xs uppercase font-bold">Zoning</div>
+                  <div className="text-xl font-bold">{property.zoning}</div>
+                </div>
+              )}
+              {property.leaseDuration && (
+                <div className="bg-white/5 p-4 rounded-2xl border border-white/10">
+                  <Clock className="text-blue-500 mb-2" size={24} />
+                  <div className="text-white/40 text-xs uppercase font-bold">Lease</div>
+                  <div className="text-xl font-bold">{property.leaseDuration}</div>
+                </div>
+              )}
+            </div>
+
+            {property.tags && property.tags.length > 0 && (
+              <div className="mb-8 flex flex-wrap gap-2">
+                {property.tags.map(tag => (
+                  <span key={tag} className="flex items-center gap-1.5 text-[10px] font-bold text-emerald-400 bg-emerald-400/10 px-2 py-1 rounded-lg border border-emerald-400/20 uppercase tracking-widest">
+                    <Tag size={10} />
+                    {tag}
+                  </span>
+                ))}
+              </div>
+            )}
+
+            {property.videoTourUrl && (
+              <div className="mb-12">
+                <h3 className="text-xl font-bold mb-4 flex items-center">
+                  <Video className="mr-2 text-emerald-500" size={20} />
+                  Video Tour
+                </h3>
+                <div className="relative aspect-video rounded-3xl overflow-hidden shadow-2xl border border-white/10 bg-black">
+                  {property.videoTourUrl.startsWith('data:video/') ? (
+                    <video 
+                      src={property.videoTourUrl} 
+                      controls 
+                      className="absolute inset-0 w-full h-full object-contain"
+                    />
+                  ) : (
+                    <iframe 
+                      src={getEmbedUrl(property.videoTourUrl) || ""} 
+                      className="absolute inset-0 w-full h-full"
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
+                      allowFullScreen
+                      title="Video Tour"
+                    ></iframe>
+                  )}
+                </div>
+              </div>
+            )}
+
+            <div className="mb-12">
+              <h3 className="text-xl font-bold mb-4 flex items-center">
+                <Info className="mr-2 text-emerald-500" size={20} />
+                Description
+              </h3>
+              <p className="text-white/70 leading-relaxed text-lg">
+                {property.description}
+              </p>
+            </div>
+
+            {property.amenities && (
+              <div className="mb-12">
+                <h3 className="text-xl font-bold mb-4">Amenities</h3>
+                <div className="flex flex-wrap gap-3">
+                  {property.amenities.map(amenity => (
+                    <span key={amenity} className="px-4 py-2 bg-white/5 rounded-xl border border-white/10 text-sm">
+                      {amenity}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <div className="flex flex-col sm:flex-row gap-4">
+              <button 
+                onClick={() => onRequestViewing(property)}
+                className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white py-4 rounded-2xl font-bold text-lg transition-all shadow-xl shadow-emerald-600/20"
+              >
+                Request Viewing
+              </button>
+              <button 
+                onClick={() => onRequestInfo(property)}
+                className="flex-1 bg-slate-900 hover:bg-slate-800 text-white py-4 rounded-2xl font-bold text-lg transition-all shadow-xl shadow-slate-900/20"
+              >
+                Request Info
+              </button>
+              {property.virtualTourUrl && (
+                <a 
+                  href={property.virtualTourUrl} 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="flex-1 flex items-center justify-center bg-white/10 hover:bg-white/20 text-white py-4 rounded-2xl font-bold text-lg transition-all border border-white/20"
+                >
+                  <Eye className="mr-2" size={20} />
+                  Virtual Tour
+                </a>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Map View */}
+        <div className="mt-20">
+          <h3 className="text-2xl font-bold mb-6 flex items-center text-white">
+            <MapPin className="mr-2 text-emerald-500" size={24} />
+            Location Map & Directions
+          </h3>
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <a 
+              href={getGoogleMapsSearchUrl(property.location)}
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="lg:col-span-2 h-96 bg-white/5 rounded-[3rem] border border-white/10 relative overflow-hidden group block"
+            >
+              <div className="absolute inset-0 bg-slate-950/80 flex flex-col items-center justify-center gap-4 p-6 text-center">
+                <div className="rounded-full bg-white/10 p-4 text-emerald-300">
+                  <MapPin size={32} aria-hidden="true" />
+                </div>
+                <div>
+                  <p className="text-white text-lg font-bold">View Property Location</p>
+                  <p className="text-slate-300 text-sm mt-2">Open directions in Google Maps for the most reliable route.</p>
+                </div>
+              </div>
+              <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_rgba(255,255,255,0.15),_transparent_45%)] pointer-events-none" />
+              <div className="absolute inset-0 bg-gradient-to-t from-slate-900/40 via-transparent to-transparent" />
+              <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                <div className="bg-white text-slate-900 px-6 py-3 rounded-2xl font-bold flex items-center gap-2 shadow-2xl">
+                  <Navigation size={20} />
+                  Get Directions
+                </div>
+              </div>
+            </a>
+            <div className="bg-white/5 p-8 rounded-[3rem] border border-white/10 flex flex-col justify-center">
+              <h4 className="text-xl font-bold mb-4">How to get there?</h4>
+              <p className="text-white/60 mb-8">
+                This property is located in {property.location}. Use the button below to get real-time directions from your current location.
+              </p>
+              <a 
+                href={getGoogleMapsSearchUrl(property.location)}
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="flex items-center justify-center gap-2 bg-white text-slate-900 py-4 rounded-2xl font-bold hover:bg-emerald-500 hover:text-white transition-all"
+              >
+                <Navigation size={20} />
+                Get Directions
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </motion.div>
+  );
+};
+
+const ComparisonBar = ({ count, onExpand, onClear }: { count: number, onExpand: () => void, onClear: () => void }) => {
+  if (count < 2) return null;
+  return (
+    <motion.div 
+      initial={{ y: 100 }}
+      animate={{ y: 0 }}
+      className="fixed bottom-8 left-1/2 -translate-x-1/2 z-[105] bg-slate-900 text-white px-8 py-4 rounded-3xl shadow-2xl flex items-center gap-6 border border-white/10 backdrop-blur-xl"
+    >
+      <div className="flex items-center gap-3">
+        <div className="bg-emerald-600 w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm">
+          {count}
+        </div>
+        <span className="font-bold">Properties Selected</span>
+      </div>
+      <div className="h-8 w-px bg-white/10"></div>
+      <div className="flex gap-3">
+        <button 
+          onClick={onExpand}
+          className="bg-white text-slate-900 px-6 py-2 rounded-xl font-bold hover:bg-emerald-500 hover:text-white transition-all"
+        >
+          Compare Now
+        </button>
+        <button 
+          onClick={onClear}
+          className="p-2 hover:bg-white/10 rounded-xl transition-all text-white/60 hover:text-white"
+          title="Clear Selection"
+        >
+          <X size={20} />
+        </button>
+      </div>
+    </motion.div>
+  );
+};
+
+const ComparisonTool = ({ properties, onClose, onRemove }: { properties: Property[], onClose: () => void, onRemove: (id: string) => void }) => {
+  if (properties.length === 0) return null;
+
+  return (
+    <motion.div 
+      initial={{ opacity: 0, y: 50 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="fixed inset-x-0 bottom-0 z-[110] p-4 md:p-8"
+    >
+      <div className="max-w-6xl mx-auto bg-white rounded-[3rem] shadow-2xl border border-slate-200 overflow-hidden">
+        <div className="p-6 md:p-8 bg-slate-50 border-b border-slate-200 flex justify-between items-center">
+          <div>
+            <h3 className="text-2xl font-bold text-slate-900">Property Comparison</h3>
+            <p className="text-slate-500">Compare up to 4 properties side-by-side</p>
+          </div>
+          <button onClick={onClose} className="p-3 hover:bg-slate-200 rounded-full transition-colors">
+            <X size={24} />
+          </button>
+        </div>
+
+        <div className="overflow-x-auto">
+          <table className="w-full text-left border-collapse">
+            <thead>
+              <tr>
+                <th className="p-6 bg-slate-50 border-r border-slate-100 min-w-[200px]">Features</th>
+                {properties.map(p => (
+                  <th key={p.id} className="p-6 min-w-[280px] relative group">
+                    <button 
+                      onClick={() => onRemove(p.id)}
+                      className="absolute top-4 right-4 p-1.5 bg-red-100 text-red-600 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                    >
+                      <X size={14} />
+                    </button>
+                    <img src={p.img} alt="" className="w-full h-40 object-cover rounded-2xl mb-4" referrerPolicy="no-referrer" />
+                    <div className="font-bold text-slate-900">{p.title}</div>
+                    <div className="text-emerald-600 font-black">Ksh {p.price.toLocaleString()}</div>
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody className="text-slate-600">
+              <tr className="border-t border-slate-100">
+                <td className="p-6 bg-slate-50 border-r border-slate-100 font-bold">Location</td>
+                {properties.map(p => <td key={p.id} className="p-6">{p.location}</td>)}
+              </tr>
+              <tr className="border-t border-slate-100">
+                <td className="p-6 bg-slate-50 border-r border-slate-100 font-bold">Type</td>
+                {properties.map(p => <td key={p.id} className="p-6 capitalize">{p.category.replace('-', ' ')}</td>)}
+              </tr>
+              <tr className="border-t border-slate-100">
+                <td className="p-6 bg-slate-50 border-r border-slate-100 font-bold">Bedrooms</td>
+                {properties.map(p => <td key={p.id} className="p-6">{p.bedrooms !== undefined ? (p.bedrooms === 0 ? 'Studio' : p.bedrooms) : '-'}</td>)}
+              </tr>
+              <tr className="border-t border-slate-100">
+                <td className="p-6 bg-slate-50 border-r border-slate-100 font-bold">Bathrooms</td>
+                {properties.map(p => <td key={p.id} className="p-6">{p.bathrooms || '-'}</td>)}
+              </tr>
+              <tr className="border-t border-slate-100">
+                <td className="p-6 bg-slate-50 border-r border-slate-100 font-bold">Size</td>
+                {properties.map(p => <td key={p.id} className="p-6">{p.sqft ? `${p.sqft} sqft` : (p.plotSize || '-')}</td>)}
+              </tr>
+              <tr className="border-t border-slate-100">
+                <td className="p-6 bg-slate-50 border-r border-slate-100 font-bold">Amenities</td>
+                {properties.map(p => (
+                  <td key={p.id} className="p-6">
+                    <div className="flex flex-wrap gap-1">
+                      {p.amenities?.slice(0, 3).map(a => (
+                        <span key={a} className="text-[10px] px-2 py-0.5 bg-slate-100 rounded-full">{a}</span>
+                      ))}
+                      {(p.amenities?.length || 0) > 3 && <span className="text-[10px] text-slate-400">+{p.amenities!.length - 3} more</span>}
+                    </div>
+                  </td>
+                ))}
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </motion.div>
+  );
+};
+
+const Listings = ({ 
+  type, 
+  properties,
+  onSelect,
+  onCompare,
+  comparisonList,
+  userLocation,
+  onRequestViewing,
+  onRequestInfo
+}: { 
+  type: 'rent' | 'sale', 
+  properties: Property[],
+  onSelect: (p: Property) => void,
+  onCompare: (p: Property) => void,
+  comparisonList: string[],
+  userLocation: { lat: number, lng: number } | null,
+  onRequestViewing: (p: Property) => void,
+  onRequestInfo: (p: Property) => void
+}) => {
+  const [filters, setFilters] = useState({
+    priceRange: 'all',
+    bedrooms: 'all',
+    location: 'all',
+    propertyType: 'all',
+    sortBy: 'default',
+    amenities: [] as string[],
+    status: 'all'
+  });
+
+  const allAmenities = useMemo(() => {
+    const amenities = new Set<string>();
+    properties.filter(p => p.type === type).forEach(p => {
+      p.amenities?.forEach(a => amenities.add(a));
+    });
+    return Array.from(amenities);
+  }, [properties, type]);
+
+  const filteredProperties = useMemo(() => {
+    let result = properties.filter(p => {
+      if (p.type !== type) return false;
+      
+      // Price Filter
+      if (filters.priceRange !== 'all') {
+        const [min, max] = filters.priceRange.split('-').map(Number);
+        if (max) {
+          if (p.price < min || p.price > max) return false;
+        } else {
+          if (p.price < min) return false;
+        }
+      }
+
+      // Bedrooms Filter (Rentals only)
+      if (type === 'rent' && filters.bedrooms !== 'all') {
+        if (filters.bedrooms === '3+') {
+          if ((p.bedrooms || 0) < 3) return false;
+        } else {
+          if (p.bedrooms !== Number(filters.bedrooms)) return false;
+        }
+      }
+
+      // Property Type Filter
+      if (filters.propertyType !== 'all') {
+        if (p.category !== filters.propertyType) return false;
+      }
+
+      // Location Filter
+      if (filters.location !== 'all') {
+        if (p.location !== filters.location) return false;
+      }
+
+      // Amenities Filter
+      if (filters.amenities.length > 0) {
+        if (!filters.amenities.every(a => p.amenities?.includes(a))) return false;
+      }
+
+      // Status Filter
+      if (filters.status !== 'all') {
+        if (p.status !== filters.status) return false;
+      }
+
+      return true;
+    });
+
+    // Sorting
+    if (filters.sortBy === 'near-me' && userLocation) {
+      result = [...result].sort((a, b) => {
+        const distA = getDistance(userLocation.lat, userLocation.lng, a.lat, a.lng);
+        const distB = getDistance(userLocation.lat, userLocation.lng, b.lat, b.lng);
+        return distA - distB;
+      });
+    } else if (filters.sortBy === 'price-low') {
+      result = [...result].sort((a, b) => a.price - b.price);
+    } else if (filters.sortBy === 'price-high') {
+      result = [...result].sort((a, b) => b.price - a.price);
+    }
+
+    return result;
+  }, [properties, type, filters, userLocation]);
+
+  const locations = useMemo(() => {
+    const locs = new Set(properties.filter(p => p.type === type).map(p => p.location));
+    return Array.from(locs);
+  }, [properties, type]);
+
+  return (
+    <section id={type === 'rent' ? "rentals" : "sales"} className={`py-24 ${type === 'sale' ? 'bg-slate-50' : 'bg-white'}`}>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="flex flex-col xl:flex-row justify-between items-start xl:items-end mb-12 gap-8">
+          <div>
+            <h2 className={`font-bold tracking-widest uppercase text-sm mb-4 ${type === 'rent' ? 'text-emerald-700' : 'text-red-700'}`}>
+              {type === 'rent' ? "Available for Let" : "Properties for Sale"}
+            </h2>
+            <h3 className="text-4xl font-extrabold text-slate-900">
+              {type === 'rent' ? "Featured Rentals" : "Investment Opportunities"}
+            </h3>
+          </div>
+          
+          {/* Filters */}
+          <div className="flex flex-wrap gap-3">
+            <div className="flex items-center bg-slate-100 rounded-xl px-3 py-2">
+              <Navigation size={16} className="text-slate-500 mr-2" />
+              <select 
+                className="bg-transparent text-sm font-semibold focus:outline-none"
+                value={filters.sortBy}
+                onChange={(e) => setFilters(prev => ({ ...prev, sortBy: e.target.value }))}
+              >
+                <option value="default">Sort By</option>
+                <option value="near-me" disabled={!userLocation}>Near Me</option>
+                <option value="price-low">Price: Low to High</option>
+                <option value="price-high">Price: High to Low</option>
+              </select>
+            </div>
+
+            <div className="flex items-center bg-slate-100 rounded-xl px-3 py-2">
+              <Filter size={16} className="text-slate-500 mr-2" />
+              <select 
+                className="bg-transparent text-sm font-semibold focus:outline-none"
+                value={filters.priceRange}
+                onChange={(e) => setFilters(prev => ({ ...prev, priceRange: e.target.value }))}
+              >
+                <option value="all">All Prices</option>
+                {type === 'rent' ? (
+                  <>
+                    <option value="0-10000">Below 10k</option>
+                    <option value="10000-20000">10k - 20k</option>
+                    <option value="20000-100000">Above 20k</option>
+                  </>
+                ) : (
+                  <>
+                    <option value="0-500000">Below 500k</option>
+                    <option value="500000-2000000">500k - 2M</option>
+                    <option value="2000000-10000000">Above 2M</option>
+                  </>
+                )}
+              </select>
+            </div>
+
+            {type === 'rent' && (
+              <div className="flex items-center bg-slate-100 rounded-xl px-3 py-2">
+                <Layers size={16} className="text-slate-500 mr-2" />
+                <select 
+                  className="bg-transparent text-sm font-semibold focus:outline-none"
+                  value={filters.propertyType}
+                  onChange={(e) => setFilters(prev => ({ ...prev, propertyType: e.target.value }))}
+                >
+                  <option value="all">Property Type</option>
+                  <option value="apartment">Apartment</option>
+                  <option value="bedsitter">Bedsitter</option>
+                  <option value="shop">Shop</option>
+                  <option value="commercial">Commercial</option>
+                </select>
+              </div>
+            )}
+
+            {type === 'rent' && (
+              <div className="flex items-center bg-slate-100 rounded-xl px-3 py-2">
+                <Bed size={16} className="text-slate-500 mr-2" />
+                <select 
+                  className="bg-transparent text-sm font-semibold focus:outline-none"
+                  value={filters.bedrooms}
+                  onChange={(e) => setFilters(prev => ({ ...prev, bedrooms: e.target.value }))}
+                >
+                  <option value="all">All Bedrooms</option>
+                  <option value="0">Bedsitter</option>
+                  <option value="1">1 Bedroom</option>
+                  <option value="2">2 Bedrooms</option>
+                  <option value="3+">3+ Bedrooms</option>
+                </select>
+              </div>
+            )}
+
+            {type === 'sale' && (
+              <div className="flex items-center bg-slate-100 rounded-xl px-3 py-2">
+                <Layers size={16} className="text-slate-500 mr-2" />
+                <select 
+                  className="bg-transparent text-sm font-semibold focus:outline-none"
+                  value={filters.propertyType}
+                  onChange={(e) => setFilters(prev => ({ ...prev, propertyType: e.target.value }))}
+                >
+                  <option value="all">Property Type</option>
+                  <option value="plot">Plots</option>
+                  <option value="house">Houses</option>
+                  <option value="commercial">Commercial</option>
+                </select>
+              </div>
+            )}
+
+            <div className="flex items-center bg-slate-100 rounded-xl px-3 py-2">
+              <MapPin size={16} className="text-slate-500 mr-2" />
+              <select 
+                className="bg-transparent text-sm font-semibold focus:outline-none"
+                value={filters.location}
+                onChange={(e) => setFilters(prev => ({ ...prev, location: e.target.value }))}
+              >
+                <option value="all">All Locations</option>
+                {locations.map(loc => <option key={loc} value={loc}>{loc}</option>)}
+              </select>
+            </div>
+
+            <div className="flex items-center bg-slate-100 rounded-xl px-3 py-2">
+              <CheckCircle2 size={16} className="text-slate-500 mr-2" />
+              <select 
+                className="bg-transparent text-sm font-semibold focus:outline-none"
+                value={filters.status}
+                onChange={(e) => setFilters(prev => ({ ...prev, status: e.target.value }))}
+              >
+                <option value="all">All Status</option>
+                <option value="Available">Available</option>
+                <option value="Under Offer">Under Offer</option>
+                <option value="Sold">Sold</option>
+                <option value="Rented">Rented</option>
+                <option value="Unavailable">Unavailable</option>
+              </select>
+            </div>
+
+            <div className="relative group">
+              <div className="flex items-center bg-slate-100 rounded-xl px-3 py-2 cursor-pointer">
+                <CheckCircle2 size={16} className="text-slate-500 mr-2" />
+                <span className="text-sm font-semibold">Amenities {filters.amenities.length > 0 && `(${filters.amenities.length})`}</span>
+              </div>
+              <div className="absolute top-full right-0 mt-2 bg-white rounded-2xl shadow-2xl border border-slate-100 p-4 z-50 min-w-[200px] opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all">
+                <div className="space-y-2 max-h-60 overflow-y-auto pr-2 scrollbar-hide">
+                  {allAmenities.map(amenity => (
+                    <label key={amenity} className="flex items-center gap-3 cursor-pointer hover:bg-slate-50 p-1 rounded-lg transition-colors">
+                      <input 
+                        type="checkbox" 
+                        className="w-4 h-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
+                        checked={filters.amenities.includes(amenity)}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setFilters(prev => ({ ...prev, amenities: [...prev.amenities, amenity] }));
+                          } else {
+                            setFilters(prev => ({ ...prev, amenities: prev.amenities.filter(a => a !== amenity) }));
+                          }
+                        }}
+                      />
+                      <span className="text-sm text-slate-700">{amenity}</span>
+                    </label>
+                  ))}
+                </div>
+                {filters.amenities.length > 0 && (
+                  <button 
+                    onClick={() => setFilters(prev => ({ ...prev, amenities: [] }))}
+                    className="mt-4 w-full text-xs font-bold text-red-600 hover:text-red-700 text-center"
+                  >
+                    Clear All
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {filteredProperties.length > 0 ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
+            {filteredProperties.map((item) => (
+              <motion.div 
+                key={item.id}
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                className="group cursor-pointer bg-white rounded-[2rem] overflow-hidden shadow-sm hover:shadow-xl transition-all border border-slate-100 flex flex-col"
+              >
+                <div className="relative overflow-hidden aspect-[4/3]" onClick={() => onSelect(item)}>
+                  <img 
+                    src={item.img} 
+                    alt={item.title} 
+                    className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                    referrerPolicy="no-referrer"
+                  />
+                  <div className="absolute top-4 left-4 flex flex-col gap-2">
+                    <div className="bg-white/90 backdrop-blur-sm px-3 py-1 rounded-full text-xs font-bold text-slate-900">
+                      {item.id}
+                    </div>
+                    <div className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider shadow-sm ${
+                      item.status === 'Available' ? 'bg-emerald-500 text-white' :
+                      item.status === 'Under Offer' ? 'bg-amber-500 text-white' :
+                      item.status === 'Sold' || item.status === 'Rented' ? 'bg-red-600 text-white' :
+                      'bg-slate-500 text-white'
+                    }`}>
+                      {item.status}
+                    </div>
+                    {item.videoTourUrl && (
+                      <div className="bg-emerald-600 text-white px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider shadow-sm flex items-center gap-1">
+                        <Video size={10} />
+                        Video Tour
+                      </div>
+                    )}
+                  </div>
+                  {userLocation && (
+                    <div className="absolute top-4 right-4 bg-emerald-600/90 backdrop-blur-sm px-3 py-1 rounded-full text-[10px] font-bold text-white flex items-center">
+                      <Navigation size={10} className="mr-1" />
+                      {getDistance(userLocation.lat, userLocation.lng, item.lat, item.lng).toFixed(1)} km
+                    </div>
+                  )}
+                </div>
+                
+                <div className="p-6 flex-1 flex flex-col">
+                  <div className="flex justify-between items-start mb-1">
+                    <h4 className="text-lg font-bold text-slate-900 flex-1" onClick={() => onSelect(item)}>{item.title}</h4>
+                    <button 
+                      onClick={(e) => { e.stopPropagation(); onCompare(item); }}
+                      className={`p-2 px-3 rounded-xl transition-all flex items-center gap-2 ${comparisonList.includes(item.id) ? 'bg-emerald-100 text-emerald-600' : 'bg-slate-50 text-slate-400 hover:bg-slate-100'}`}
+                      title="Compare Property"
+                    >
+                      <Scale size={18} />
+                      <span className="text-xs font-bold">{comparisonList.includes(item.id) ? 'Selected' : 'Compare'}</span>
+                    </button>
+                  </div>
+                  <div className="flex items-center text-slate-500 text-sm mb-4" onClick={() => onSelect(item)}>
+                    <MapPin size={14} className="mr-1" /> {item.location}
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-y-2 mb-4 border-t border-slate-50 pt-4" onClick={() => onSelect(item)}>
+                    {item.type === 'rent' ? (
+                      <>
+                        {item.bedrooms !== undefined && (
+                          <div className="flex items-center text-xs text-slate-600">
+                            <Bed size={14} className="mr-1 text-emerald-600" /> {item.bedrooms === 0 ? 'Studio' : `${item.bedrooms} Bed`}
+                          </div>
+                        )}
+                        {item.bathrooms && (
+                          <div className="flex items-center text-xs text-slate-600">
+                            <Bath size={14} className="mr-1 text-emerald-600" /> {item.bathrooms} Bath
+                          </div>
+                        )}
+                      </>
+                    ) : (
+                      <>
+                        {item.plotSize && (
+                          <div className="flex items-center text-xs text-slate-600">
+                            <Maximize size={14} className="mr-1 text-red-600" /> {item.plotSize}
+                          </div>
+                        )}
+                        {item.zoning && (
+                          <div className="flex items-center text-xs text-slate-600">
+                            <Layers size={14} className="mr-1 text-red-600" /> {item.zoning}
+                          </div>
+                        )}
+                      </>
+                    )}
+                  </div>
+
+                  <div className="flex justify-between items-center mt-auto gap-2">
+                    <span className={`text-xl font-extrabold ${item.type === 'rent' ? 'text-emerald-700' : 'text-red-700'}`} onClick={() => onSelect(item)}>
+                      Ksh {item.price.toLocaleString()}
+                    </span>
+                    <div className="flex gap-2">
+                      <button 
+                        onClick={(e) => { e.stopPropagation(); onRequestViewing(item); }}
+                        className="px-4 py-2 rounded-xl bg-slate-900 text-white text-[10px] font-bold hover:bg-emerald-700 transition-all"
+                      >
+                        Viewing
+                      </button>
+                      <button 
+                        onClick={(e) => { e.stopPropagation(); onRequestInfo(item); }}
+                        className="px-4 py-2 rounded-xl bg-white border border-slate-200 text-slate-900 text-[10px] font-bold hover:bg-slate-50 transition-all"
+                      >
+                        Info
+                      </button>
+                      <button 
+                        onClick={() => onSelect(item)}
+                        className="p-2 rounded-full bg-slate-100 text-slate-600 hover:bg-emerald-700 hover:text-white transition-colors"
+                      >
+                        <ArrowRight size={18} />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </motion.div>
+            ))}
+          </div>
+        ) : (
+          <div className="text-center py-20 bg-slate-50 rounded-3xl border-2 border-dashed border-slate-200">
+            <p className="text-slate-500 font-medium">No properties match your filters.</p>
+            <button 
+              onClick={() => setFilters({ priceRange: 'all', bedrooms: 'all', location: 'all', propertyType: 'all', sortBy: 'default', amenities: [], status: 'all' })}
+              className="mt-4 text-emerald-700 font-bold hover:underline"
+            >
+              Clear all filters
+            </button>
+          </div>
+        )}
+      </div>
+    </section>
+  );
+};
+
+const Office = ({ config }: { config: SiteConfig }) => {
+  return (
+    <section id="office" className="py-24 bg-white overflow-hidden">
+      <div className="max-w-7xl mx-auto px-4">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
+          <motion.div
+            initial={{ opacity: 0, x: -50 }}
+            whileInView={{ opacity: 1, x: 0 }}
+            viewport={{ once: true }}
+            className="space-y-8"
+          >
+            <div className="inline-flex items-center px-4 py-2 bg-emerald-50 text-emerald-700 rounded-full text-sm font-bold uppercase tracking-wider">
+              <MapPin size={16} className="mr-2" />
+              Visit Our Office
+            </div>
+            <h2 className="text-4xl md:text-5xl font-extrabold text-slate-900 leading-tight">
+              {config.siteName} Plaza, <span className="text-emerald-600">{config.contactAddress}</span>
+            </h2>
+            <p className="text-slate-600 text-lg leading-relaxed">
+              Our headquarters is located at {config.contactAddress}. We welcome you to visit us for a one-on-one consultation regarding property management, construction, or real estate investment.
+            </p>
+            
+            <div className="space-y-4">
+              <div className="flex items-start gap-4 p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                <div className="bg-emerald-600 p-3 rounded-xl text-white">
+                  <MapPin size={24} />
+                </div>
+                <div>
+                  <h4 className="font-bold text-slate-900">Address</h4>
+                  <p className="text-slate-600">{config.contactAddress}</p>
+                </div>
+              </div>
+              
+              <div className="flex items-start gap-4 p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                <div className="bg-emerald-600 p-3 rounded-xl text-white">
+                  <Clock size={24} />
+                </div>
+                <div>
+                  <h4 className="font-bold text-slate-900">Business Hours</h4>
+                  <p className="text-slate-600">{config.officeWorkingHours}</p>
+                </div>
+              </div>
+            </div>
+
+            <a 
+              href={getGoogleMapsSearchUrl(config.contactAddress)} 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 bg-slate-900 text-white px-8 py-4 rounded-2xl font-bold hover:bg-emerald-700 transition-all shadow-xl shadow-slate-900/20"
+            >
+              Get Directions
+              <ExternalLink size={20} />
+            </a>
+          </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            whileInView={{ opacity: 1, scale: 1 }}
+            viewport={{ once: true }}
+            className="relative h-[500px] rounded-[3rem] overflow-hidden shadow-2xl border-8 border-slate-50"
+          >
+            <iframe 
+              src={`https://www.google.com/maps?q=${encodeURIComponent(config.contactAddress)}&output=embed`} 
+              width="100%" 
+              height="100%" 
+              style={{ border: 0 }} 
+              allowFullScreen={true} 
+              loading="lazy" 
+              referrerPolicy="no-referrer-when-downgrade"
+              title="Office Location"
+            ></iframe>
+          </motion.div>
+        </div>
+      </div>
+    </section>
+  );
+};
+
+const Contact = ({ initialService, config }: { initialService?: string, config: SiteConfig }) => {
+  const [formData, setFormData] = useState({
+    name: "",
+    email: "",
+    service: initialService || "",
+    message: ""
+  });
+
+  useEffect(() => {
+    if (initialService) {
+      setFormData(prev => ({ ...prev, service: initialService }));
+    }
+  }, [initialService]);
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isSuccess, setIsSuccess] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+
+  const validate = () => {
+    const newErrors: Record<string, string> = {};
+    if (!formData.name.trim()) newErrors.name = "Name is required";
+    
+    if (!formData.email.trim()) {
+      newErrors.email = "Email is required";
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+      newErrors.email = "Invalid email format";
+    }
+    
+    if (!formData.message.trim()) newErrors.message = "Message is required";
+    
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSubmitError(null);
+
+    if (!validate()) {
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    try {
+      const response = await fetch('/api/contact', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: formData.name,
+          email: formData.email,
+          service: formData.service,
+          message: formData.message,
+        }),
+      });
+
+      const result = await response.json();
+      if (!response.ok) {
+        throw new Error(result.error || 'Unable to send your message.');
+      }
+
+      setIsSuccess(true);
+      setFormData({ name: '', email: '', service: '', message: '' });
+      setTimeout(() => setIsSuccess(false), 5000);
+    } catch (err) {
+      console.error(err);
+      setSubmitError('Unable to send your message. Please try again later.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  return (
+    <section id="contact" className="py-24 bg-emerald-900 text-white overflow-hidden relative">
+      {/* Decorative background elements */}
+      <div className="absolute top-0 right-0 w-96 h-96 bg-emerald-800 rounded-full blur-3xl -mr-48 -mt-48 opacity-50"></div>
+      <div className="absolute bottom-0 left-0 w-96 h-96 bg-emerald-800 rounded-full blur-3xl -ml-48 -mb-48 opacity-50"></div>
+
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
+          <div>
+            <h2 className="text-red-500 font-bold tracking-widest uppercase text-sm mb-4">Get In Touch</h2>
+            <h3 className="text-4xl md:text-5xl font-extrabold mb-8 leading-tight">
+              Ready to find your <br />
+              <span className="text-emerald-400">perfect property?</span>
+            </h3>
+            
+            <div className="space-y-6 mb-12">
+              <div className="flex items-center">
+                <div className="w-12 h-12 bg-white/10 rounded-xl flex items-center justify-center mr-4">
+                  <Phone className="text-emerald-400" size={24} />
+                </div>
+                <div>
+                  <div className="text-slate-400 text-sm">Call Us</div>
+                  <div className="text-lg font-bold">{config.contactPhone}</div>
+                </div>
+              </div>
+              <div className="flex items-center">
+                <div className="w-12 h-12 bg-white/10 rounded-xl flex items-center justify-center mr-4">
+                  <Mail className="text-emerald-400" size={24} />
+                </div>
+                <div>
+                  <div className="text-slate-400 text-sm">Email Us</div>
+                  <div className="text-lg font-bold">{config.contactEmail}</div>
+                </div>
+              </div>
+              <div className="flex items-center">
+                <div className="w-12 h-12 bg-white/10 rounded-xl flex items-center justify-center mr-4">
+                  <Clock className="text-emerald-400" size={24} />
+                </div>
+                <div>
+                  <div className="text-slate-400 text-sm">Working Hours</div>
+                  <div className="text-lg font-bold">{config.officeWorkingHours}</div>
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-white/5 border border-white/10 p-6 rounded-2xl">
+              <div className="flex items-center text-emerald-400 font-bold mb-2">
+                <CheckCircle2 size={20} className="mr-2" /> Viewing Fee: {config.viewingFee}
+              </div>
+              <p className="text-slate-400 text-sm">
+                A small viewing fee applies to ensure serious inquiries and maintain high-quality service for all clients.
+              </p>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-3xl p-8 md:p-10 shadow-2xl">
+            <h4 className="text-2xl font-bold text-slate-900 mb-6">Send a Message</h4>
+            {isSuccess ? (
+              <motion.div 
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                className="bg-emerald-50 border border-emerald-100 p-8 rounded-2xl text-center"
+              >
+                <div className="w-16 h-16 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <CheckCircle2 size={32} />
+                </div>
+                <h5 className="text-xl font-bold text-slate-900 mb-2">Message Sent!</h5>
+                <p className="text-slate-600">Thank you for reaching out. We will get back to you shortly.</p>
+              </motion.div>
+            ) : (
+              <form onSubmit={handleSubmit} className="space-y-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <input 
+                      type="text" 
+                      placeholder="Your Name" 
+                      className={`w-full px-5 py-4 rounded-xl bg-slate-50 border ${errors.name ? 'border-red-500' : 'border-slate-200'} text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-600 transition-all`}
+                      value={formData.name}
+                      onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
+                    />
+                    {errors.name && <p className="text-red-500 text-xs mt-1 ml-1">{errors.name}</p>}
+                  </div>
+                  <div>
+                    <input 
+                      type="text" 
+                      placeholder="Your Email" 
+                      className={`w-full px-5 py-4 rounded-xl bg-slate-50 border ${errors.email ? 'border-red-500' : 'border-slate-200'} text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-600 transition-all`}
+                      value={formData.email}
+                      onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
+                    />
+                    {errors.email && <p className="text-red-500 text-xs mt-1 ml-1">{errors.email}</p>}
+                  </div>
+                </div>
+                <select 
+                  className="w-full px-5 py-4 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-600 transition-all appearance-none"
+                  value={formData.service}
+                  onChange={(e) => setFormData(prev => ({ ...prev, service: e.target.value }))}
+                >
+                  <option value="">Select Service</option>
+                  {config.services.map(s => (
+                    <option key={s.id} value={s.title}>{s.title}</option>
+                  ))}
+                </select>
+                <div>
+                  <textarea 
+                    placeholder="How can we help you?" 
+                    rows={4}
+                    className={`w-full px-5 py-4 rounded-xl bg-slate-50 border ${errors.message ? 'border-red-500' : 'border-slate-200'} text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-600 transition-all`}
+                    value={formData.message}
+                    onChange={(e) => setFormData(prev => ({ ...prev, message: e.target.value }))}
+                  ></textarea>
+                  {errors.message && <p className="text-red-500 text-xs mt-1 ml-1">{errors.message}</p>}
+                </div>
+                {submitError && <p className="text-red-500 text-sm">{submitError}</p>}
+                <button 
+                  type="submit"
+                  disabled={isSubmitting}
+                  className="w-full bg-emerald-700 text-white py-4 rounded-xl font-bold text-lg hover:bg-emerald-800 transition-all shadow-lg shadow-emerald-700/20 disabled:opacity-70 flex items-center justify-center"
+                >
+                  {isSubmitting ? (
+                    <div className="w-6 h-6 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                  ) : "Send Message"}
+                </button>
+              </form>
+            )}
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+};
+
+const Footer = ({ config }: { config: SiteConfig }) => {
+  return (
+    <footer className="bg-slate-950 text-white pt-20 pb-10">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12 mb-16">
+          <div>
+            <div className="text-3xl font-extrabold tracking-tighter mb-6">
+              <span className="text-emerald-500">{config.siteName}</span>
+              <span className="text-red-500 ml-1">{config.siteNameSecondary}</span>
+            </div>
+            <p className="text-slate-400 leading-relaxed mb-8">
+              {config.siteDescription}
+            </p>
+            <div className="flex space-x-4">
+              <a href={config.socialLinks.facebook} className="w-10 h-10 bg-white/5 rounded-full flex items-center justify-center hover:bg-emerald-600 transition-all">
+                <Facebook size={20} />
+              </a>
+              <a href={config.socialLinks.instagram} className="w-10 h-10 bg-white/5 rounded-full flex items-center justify-center hover:bg-emerald-600 transition-all">
+                <Instagram size={20} />
+              </a>
+              <a href={config.socialLinks.twitter} className="w-10 h-10 bg-white/5 rounded-full flex items-center justify-center hover:bg-emerald-600 transition-all">
+                <Twitter size={20} />
+              </a>
+            </div>
+          </div>
+
+          <div>
+            <h5 className="text-lg font-bold mb-6">Quick Links</h5>
+            <ul className="space-y-4 text-slate-400">
+              <li><a href="#home" className="hover:text-emerald-400 transition-colors">Home</a></li>
+              <li><a href="#services" className="hover:text-emerald-400 transition-colors">Our Services</a></li>
+              <li><a href="#rentals" className="hover:text-emerald-400 transition-colors">Rental Listings</a></li>
+              <li><a href="#sales" className="hover:text-emerald-400 transition-colors">Plots for Sale</a></li>
+              <li><a href="#contact" className="hover:text-emerald-400 transition-colors">Contact Us</a></li>
+            </ul>
+          </div>
+
+          <div>
+            <h5 className="text-lg font-bold mb-6">Services</h5>
+            <ul className="space-y-4 text-slate-400">
+              {config.services.map(s => (
+                <li key={s.id}>{s.title}</li>
+              ))}
+            </ul>
+          </div>
+
+          <div>
+            <h5 className="text-lg font-bold mb-6">Newsletter</h5>
+            <p className="text-slate-400 mb-6">Subscribe to get the latest property listings and investment tips.</p>
+            <div className="flex">
+              <input 
+                type="email" 
+                placeholder="Email address" 
+                className="bg-white/5 border border-white/10 px-4 py-3 rounded-l-xl focus:outline-none focus:ring-1 focus:ring-emerald-500 w-full"
+              />
+              <button className="bg-emerald-600 px-4 py-3 rounded-r-xl hover:bg-emerald-700 transition-all">
+                Join
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div className="pt-8 border-t border-white/5 flex flex-col md:flex-row items-center justify-between gap-6 text-slate-500 text-sm">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:gap-4">
+            <p>&copy; {new Date().getFullYear()} LPHASK Homes & Properties. All rights reserved.</p>
+            <button
+              type="button"
+              className="text-emerald-300 hover:text-white text-sm underline underline-offset-4"
+              onClick={() => window.dispatchEvent(new CustomEvent('open-admin-login'))}
+            >
+              Admin
+            </button>
+          </div>
+          <div className="flex items-center gap-3 group">
+            <span className="text-slate-600">Developed by</span>
+            <div className="flex items-center gap-2 bg-white/5 px-3 py-1.5 rounded-full hover:bg-white/10 transition-all border border-white/5">
+              <div className="w-6 h-6 bg-white rounded-full flex items-center justify-center p-1">
+                <svg viewBox="0 0 100 100" className="w-full h-full">
+                  <circle cx="50" cy="50" r="45" fill="none" stroke="#000" strokeWidth="2" />
+                  <circle cx="50" cy="30" r="8" fill="#000" />
+                  <circle cx="30" cy="65" r="8" fill="#000" />
+                  <circle cx="70" cy="65" r="8" fill="#000" />
+                  <path d="M50 30 L30 65 M50 30 L70 65 M30 65 L70 65" stroke="#000" strokeWidth="2" fill="none" />
+                </svg>
+              </div>
+              <div className="flex flex-col leading-none">
+                <span className="text-white font-black tracking-tighter text-xs">TRACE</span>
+                <span className="text-[6px] text-slate-400 uppercase tracking-[0.2em]">Technologies</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </footer>
+  );
+};
+
+const AdminLoginModal = ({ onClose, onLogin, onForgot, error }: { onClose: () => void, onLogin: (password: string) => void, onForgot: () => void, error?: string }) => {
+  const [password, setPassword] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+    await onLogin(password);
+    setIsSubmitting(false);
+  };
+
+  return (
+    <motion.div className="fixed inset-0 z-[210] bg-slate-900/90 backdrop-blur-md flex items-center justify-center p-4" role="dialog" aria-modal="true">
+      <motion.div className="bg-white w-full max-w-md rounded-[2rem] p-8 shadow-2xl">
+        <div className="mb-6">
+          <h3 className="text-2xl font-bold text-slate-900">Admin Login</h3>
+          <p className="text-slate-500 mt-2">Enter the admin password to manage site settings and property details.</p>
+        </div>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label htmlFor="admin-password" className="block text-sm font-semibold text-slate-600 mb-2">Password</label>
+            <input
+              id="admin-password"
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="w-full px-4 py-3 rounded-2xl border border-slate-200 focus:ring-2 focus:ring-emerald-500 outline-none"
+              required
+            />
+          </div>
+          {error && <p className="text-red-600 text-sm">{error}</p>}
+          <div className="flex flex-col gap-3">
+            <div className="flex items-center justify-between gap-4">
+              <button type="button" onClick={onClose} className="text-slate-700 hover:text-slate-900 transition-all">
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={isSubmitting}
+                className="bg-emerald-600 text-white px-6 py-3 rounded-2xl font-semibold hover:bg-emerald-700 transition-all disabled:opacity-60"
+              >
+                {isSubmitting ? 'Signing in...' : 'Sign In'}
+              </button>
+            </div>
+            <button type="button" onClick={onForgot} className="text-sm text-emerald-600 hover:text-emerald-700 transition-all underline underline-offset-2">
+              Forgot password?
+            </button>
+          </div>
+        </form>
+      </motion.div>
+    </motion.div>
+  );
+};
+
+const AdminResetModal = ({
+  onClose,
+  email,
+  token,
+  newPassword,
+  onChangeEmail,
+  onChangeToken,
+  onChangeNewPassword,
+  onRequestReset,
+  onCompleteReset,
+  message,
+}: {
+  onClose: () => void;
+  email: string;
+  token: string;
+  newPassword: string;
+  onChangeEmail: (value: string) => void;
+  onChangeToken: (value: string) => void;
+  onChangeNewPassword: (value: string) => void;
+  onRequestReset: () => void;
+  onCompleteReset: () => void;
+  message: string | null;
+}) => {
+  return (
+    <motion.div className="fixed inset-0 z-[210] bg-slate-900/90 backdrop-blur-md flex items-center justify-center p-4" role="dialog" aria-modal="true">
+      <motion.div className="bg-white w-full max-w-md rounded-[2rem] p-8 shadow-2xl">
+        <div className="mb-6">
+          <h3 className="text-2xl font-bold text-slate-900">Reset Admin Password</h3>
+          <p className="text-slate-500 mt-2">Use your configured admin email to receive a reset code, then set a new password.</p>
+        </div>
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-semibold text-slate-600 mb-2">Admin Email</label>
+            <input
+              type="email"
+              value={email}
+              onChange={(e) => onChangeEmail(e.target.value)}
+              className="w-full px-4 py-3 rounded-2xl border border-slate-200 focus:ring-2 focus:ring-emerald-500 outline-none"
+            />
+          </div>
+          <div>
+            <button
+              type="button"
+              onClick={onRequestReset}
+              className="w-full bg-emerald-600 text-white px-6 py-3 rounded-2xl font-semibold hover:bg-emerald-700 transition-all"
+            >
+              Send Reset Code
+            </button>
+          </div>
+          <div className="border-t border-slate-200 pt-4">
+            <div>
+              <label className="block text-sm font-semibold text-slate-600 mb-2">Reset Code</label>
+              <input
+                type="text"
+                value={token}
+                onChange={(e) => onChangeToken(e.target.value)}
+                className="w-full px-4 py-3 rounded-2xl border border-slate-200 focus:ring-2 focus:ring-emerald-500 outline-none"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-semibold text-slate-600 mb-2">New Password</label>
+              <input
+                type="password"
+                value={newPassword}
+                onChange={(e) => onChangeNewPassword(e.target.value)}
+                className="w-full px-4 py-3 rounded-2xl border border-slate-200 focus:ring-2 focus:ring-emerald-500 outline-none"
+              />
+            </div>
+            <button
+              type="button"
+              onClick={onCompleteReset}
+              className="mt-4 w-full bg-slate-900 text-white px-6 py-3 rounded-2xl font-semibold hover:bg-slate-800 transition-all"
+            >
+              Complete Reset
+            </button>
+          </div>
+          {message && <p className="text-slate-700 text-sm mt-2">{message}</p>}
+          <button type="button" onClick={onClose} className="text-slate-700 hover:text-slate-900 transition-all">
+            Close
+          </button>
+        </div>
+      </motion.div>
+    </motion.div>
+  );
+};
+
+const AdminPanel = ({
+  config,
+  properties,
+  selectedPropertyId,
+  onSelectProperty,
+  propertyDraft,
+  onPropertyDraftChange,
+  onSaveSettings,
+  onSaveProperty,
+  onUploadVideo,
+  onChangePassword,
+  onLogout,
+  onClose,
+  adminError,
+  onSettingsChange,
+  settingsDraft,
+  adminPropertySearch,
+  setAdminPropertySearch,
+  adminPropertyStatusFilter,
+  setAdminPropertyStatusFilter,
+  filteredAdminProperties,
+  selectedVideoFile,
+  setSelectedVideoFile,
+  uploadError,
+  isUploadingVideo,
+}: {
+  config: SiteConfig;
+  properties: Property[];
+  selectedPropertyId: string | null;
+  onSelectProperty: (id: string) => void;
+  propertyDraft: Property | null;
+  onPropertyDraftChange: (updates: Partial<Property>) => void;
+  onSaveSettings: () => Promise<void>;
+  onSaveProperty: (property: Property) => Promise<void>;
+  onUploadVideo: (propertyId: string, file: File | null) => Promise<void>;
+  onChangePassword: (currentPassword: string, newPassword: string) => Promise<void>;
+  onLogout: () => void;
+  onClose: () => void;
+  adminError: string | null;
+  onSettingsChange: (updates: Partial<SiteConfig>) => void;
+  settingsDraft: SiteConfig;
+  adminPropertySearch: string;
+  setAdminPropertySearch: (value: string) => void;
+  adminPropertyStatusFilter: string;
+  setAdminPropertyStatusFilter: (value: string) => void;
+  filteredAdminProperties: Property[];
+  selectedVideoFile: File | null;
+  setSelectedVideoFile: (file: File | null) => void;
+  uploadError: string | null;
+  isUploadingVideo: boolean;
+}) => {
+  const [localSettings, setLocalSettings] = useState<SiteConfig>(settingsDraft);
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+
+  useEffect(() => {
+    setLocalSettings(settingsDraft);
+  }, [settingsDraft]);
+
+  return (
+    <motion.div className="fixed inset-0 z-[205] bg-slate-950/95 backdrop-blur-xl overflow-y-auto p-4" role="dialog" aria-modal="true">
+      <motion.div className="mx-auto w-full max-w-7xl bg-gradient-to-br from-slate-50 to-slate-100 rounded-[2rem] shadow-2xl overflow-hidden">
+        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 bg-gradient-to-r from-emerald-700 to-emerald-900 px-8 py-6 border-b-4 border-emerald-500">
+          <div>
+            <h2 className="text-3xl font-bold text-white flex items-center gap-3">
+              <Layout size={32} />
+              Admin Panel
+            </h2>
+            <p className="text-emerald-100 mt-2">Manage site configuration, properties, and statistics</p>
+          </div>
+          <div className="flex items-center gap-3">
+            <button onClick={onLogout} className="bg-white/20 text-white px-5 py-3 rounded-xl hover:bg-white/30 transition-all font-semibold">
+              Logout
+            </button>
+            <button onClick={onClose} className="bg-white text-emerald-700 px-5 py-3 rounded-xl hover:bg-emerald-50 transition-all font-semibold">
+              Close
+            </button>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 xl:grid-cols-[1.2fr_0.8fr] gap-6 p-8">
+          <section className="space-y-6">
+            <div className="rounded-[2rem] border-2 border-emerald-200 bg-white p-8 shadow-lg">
+              <h3 className="text-2xl font-bold mb-6 text-slate-900 flex items-center gap-2">
+                <CheckCircle2 className="text-emerald-600" size={28} />
+                Site Settings
+              </h3>
+              <div className="grid grid-cols-1 gap-4">
+                <div>
+                  <label className="block text-sm font-semibold text-slate-600 mb-2">Hero Title</label>
+                  <input
+                    value={localSettings.heroTitle}
+                    onChange={(e) => {
+                      setLocalSettings({ ...localSettings, heroTitle: e.target.value });
+                      onSettingsChange({ heroTitle: e.target.value });
+                    }}
+                    className="w-full rounded-2xl border border-slate-200 px-4 py-3"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-slate-600 mb-2">Hero Subtitle</label>
+                  <textarea
+                    value={localSettings.heroSubtitle}
+                    onChange={(e) => {
+                      setLocalSettings({ ...localSettings, heroSubtitle: e.target.value });
+                      onSettingsChange({ heroSubtitle: e.target.value });
+                    }}
+                    className="w-full rounded-2xl border border-slate-200 px-4 py-3 h-28"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-slate-600 mb-2">Contact Phone</label>
+                  <input
+                    value={localSettings.contactPhone}
+                    onChange={(e) => {
+                      setLocalSettings({ ...localSettings, contactPhone: e.target.value });
+                      onSettingsChange({ contactPhone: e.target.value });
+                    }}
+                    className="w-full rounded-2xl border border-slate-200 px-4 py-3"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-slate-600 mb-2">Contact Email</label>
+                  <input
+                    value={localSettings.contactEmail}
+                    onChange={(e) => {
+                      setLocalSettings({ ...localSettings, contactEmail: e.target.value });
+                      onSettingsChange({ contactEmail: e.target.value });
+                    }}
+                    className="w-full rounded-2xl border border-slate-200 px-4 py-3"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-slate-600 mb-2">Admin Reset Email</label>
+                  <input
+                    value={localSettings.adminEmail}
+                    onChange={(e) => {
+                      setLocalSettings({ ...localSettings, adminEmail: e.target.value });
+                      onSettingsChange({ adminEmail: e.target.value });
+                    }}
+                    className="w-full rounded-2xl border border-slate-200 px-4 py-3"
+                  />
+                  <p className="text-xs text-slate-500 mt-2">This email will receive password reset codes for the admin account.</p>
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-slate-600 mb-2">Contact Address</label>
+                  <input
+                    value={localSettings.contactAddress}
+                    onChange={(e) => {
+                      setLocalSettings({ ...localSettings, contactAddress: e.target.value });
+                      onSettingsChange({ contactAddress: e.target.value });
+                    }}
+                    className="w-full rounded-2xl border border-slate-200 px-4 py-3"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-slate-600 mb-2">Office Hours</label>
+                  <input
+                    value={localSettings.officeWorkingHours}
+                    onChange={(e) => {
+                      setLocalSettings({ ...localSettings, officeWorkingHours: e.target.value });
+                      onSettingsChange({ officeWorkingHours: e.target.value });
+                    }}
+                    className="w-full rounded-2xl border border-slate-200 px-4 py-3"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-slate-600 mb-2">Viewing Fee</label>
+                  <input
+                    value={localSettings.viewingFee}
+                    onChange={(e) => {
+                      setLocalSettings({ ...localSettings, viewingFee: e.target.value });
+                      onSettingsChange({ viewingFee: e.target.value });
+                    }}
+                    className="w-full rounded-2xl border border-slate-200 px-4 py-3"
+                  />
+                </div>
+              </div>
+              <div className="mt-8 p-6 bg-emerald-50 rounded-2xl border-2 border-emerald-200">
+                <h4 className="text-lg font-bold mb-4 text-emerald-900 flex items-center gap-2">
+                  <CheckCircle2 className="text-emerald-600" size={20} />
+                  Homepage Statistics
+                </h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-semibold text-slate-600 mb-2">Properties Managed</label>
+                    <input
+                      value={localSettings.propertiesManaged || '500+'}
+                      onChange={(e) => {
+                        setLocalSettings({ ...localSettings, propertiesManaged: e.target.value });
+                        onSettingsChange({ propertiesManaged: e.target.value });
+                      }}
+                      placeholder="e.g., 500+"
+                      className="w-full rounded-2xl border border-slate-200 px-4 py-3"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold text-slate-600 mb-2">Happy Clients</label>
+                    <input
+                      value={localSettings.happyClients || '1.2k'}
+                      onChange={(e) => {
+                        setLocalSettings({ ...localSettings, happyClients: e.target.value });
+                        onSettingsChange({ happyClients: e.target.value });
+                      }}
+                      placeholder="e.g., 1.2k"
+                      className="w-full rounded-2xl border border-slate-200 px-4 py-3"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold text-slate-600 mb-2">Years Experience</label>
+                    <input
+                      value={localSettings.yearsExperience || '15+'}
+                      onChange={(e) => {
+                        setLocalSettings({ ...localSettings, yearsExperience: e.target.value });
+                        onSettingsChange({ yearsExperience: e.target.value });
+                      }}
+                      placeholder="e.g., 15+"
+                      className="w-full rounded-2xl border border-slate-200 px-4 py-3"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold text-slate-600 mb-2">Secure Transactions</label>
+                    <input
+                      value={localSettings.secureTransactions || '100%'}
+                      onChange={(e) => {
+                        setLocalSettings({ ...localSettings, secureTransactions: e.target.value });
+                        onSettingsChange({ secureTransactions: e.target.value });
+                      }}
+                      placeholder="e.g., 100%"
+                      className="w-full rounded-2xl border border-slate-200 px-4 py-3"
+                    />
+                  </div>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={onSaveSettings}
+                className="mt-6 w-full bg-emerald-600 text-white py-4 rounded-2xl font-bold text-lg hover:bg-emerald-700 transition-all shadow-lg hover:shadow-xl"
+              >
+                💾 Save All Settings
+              </button>
+              <div className="mt-6 rounded-2xl border-2 border-slate-300 bg-slate-50 p-6">
+                <h4 className="text-lg font-bold mb-4">Change Admin Password</h4>
+                <div className="grid grid-cols-1 gap-4">
+                  <div>
+                    <label className="block text-sm font-semibold text-slate-600 mb-2">Current Password</label>
+                    <input
+                      type="password"
+                      value={currentPassword}
+                      onChange={(e) => setCurrentPassword(e.target.value)}
+                      className="w-full rounded-2xl border border-slate-200 px-4 py-3"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold text-slate-600 mb-2">New Password</label>
+                    <input
+                      type="password"
+                      value={newPassword}
+                      onChange={(e) => setNewPassword(e.target.value)}
+                      className="w-full rounded-2xl border border-slate-200 px-4 py-3"
+                    />
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    await onChangePassword(currentPassword, newPassword);
+                    setCurrentPassword('');
+                    setNewPassword('');
+                  }}
+                  className="mt-4 w-full bg-slate-900 text-white py-3 rounded-2xl font-semibold hover:bg-slate-800 transition-all"
+                >
+                  Change Password
+                </button>
+              </div>
+              {adminError && <p className="text-red-600 text-sm mt-4">{adminError}</p>}
+            </div>
+          </section>
+
+          <section className="rounded-[2rem] border-2 border-emerald-200 bg-white p-8 shadow-lg">
+            <h3 className="text-2xl font-bold mb-6 text-slate-900 flex items-center gap-2">
+              <Building2 className="text-emerald-600" size={28} />
+              Property Editor
+            </h3>
+            <div className="space-y-4">
+              <div className="grid gap-3 md:grid-cols-[1fr_180px]">
+                <div>
+                  <label className="block text-sm font-semibold text-slate-600 mb-2 flex items-center gap-2">
+                    <Search size={16} className="text-emerald-600" />
+                    Search Properties
+                  </label>
+                  <input
+                    value={adminPropertySearch}
+                    onChange={(e) => setAdminPropertySearch(e.target.value)}
+                    placeholder="Search by title, location, status or tags"
+                    className="w-full rounded-2xl border-2 border-slate-200 px-4 py-3 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 transition-all"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-slate-600 mb-2 flex items-center gap-2">
+                    <Filter size={16} className="text-emerald-600" />
+                    Status
+                  </label>
+                  <select
+                    value={adminPropertyStatusFilter}
+                    onChange={(e) => setAdminPropertyStatusFilter(e.target.value)}
+                    className="w-full rounded-2xl border-2 border-slate-200 px-4 py-3 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 transition-all"
+                  >
+                    {['All', 'Available', 'Under Offer', 'Sold', 'Rented', 'Unavailable'].map((status) => (
+                      <option key={status} value={status}>{status}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+              <div className="rounded-3xl border-2 border-emerald-200 bg-emerald-50 p-4">
+                <p className="text-emerald-900 text-sm font-semibold mb-2 flex items-center gap-2">
+                  <CheckCircle2 size={16} />
+                  Filtered properties: {filteredAdminProperties.length}
+                </p>
+                <select
+                  value={selectedPropertyId ?? ''}
+                  onChange={(e) => onSelectProperty(e.target.value)}
+                  className="w-full rounded-2xl border border-slate-200 px-4 py-3"
+                >
+                  {filteredAdminProperties.length === 0 ? (
+                    <option value="">No matching properties</option>
+                  ) : (
+                    filteredAdminProperties.map((property) => (
+                      <option key={property.id} value={property.id}>{property.title} — {property.status}</option>
+                    ))
+                  )}
+                </select>
+              </div>
+
+              {propertyDraft ? (
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-semibold text-slate-600 mb-2">Title</label>
+                    <input
+                      value={propertyDraft.title}
+                      onChange={(e) => onPropertyDraftChange({ title: e.target.value })}
+                      className="w-full rounded-2xl border border-slate-200 px-4 py-3"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold text-slate-600 mb-2">Location (search string)</label>
+                    <input
+                      value={propertyDraft.location}
+                      onChange={(e) => onPropertyDraftChange({ location: e.target.value })}
+                      className="w-full rounded-2xl border border-slate-200 px-4 py-3"
+                    />
+                    <p className="text-xs text-slate-500 mt-2">Use a Google Maps search string or address instead of raw coordinates.</p>
+                    <a href={getGoogleMapsSearchUrl(propertyDraft.location)} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 mt-2 text-emerald-600 hover:underline">
+                      Open location in Google Maps
+                    </a>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold text-slate-600 mb-2">Price</label>
+                    <input
+                      type="number"
+                      value={propertyDraft.price}
+                      onChange={(e) => onPropertyDraftChange({ price: Number(e.target.value) })}
+                      className="w-full rounded-2xl border border-slate-200 px-4 py-3"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold text-slate-600 mb-2">Description</label>
+                    <textarea
+                      value={propertyDraft.description}
+                      onChange={(e) => onPropertyDraftChange({ description: e.target.value })}
+                      className="w-full rounded-2xl border border-slate-200 px-4 py-3 h-28"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold text-slate-600 mb-2">Status</label>
+                    <select
+                      value={propertyDraft.status}
+                      onChange={(e) => onPropertyDraftChange({ status: e.target.value as Property['status'] })}
+                      className="w-full rounded-2xl border border-slate-200 px-4 py-3"
+                    >
+                      <option value="Available">Available</option>
+                      <option value="Under Offer">Under Offer</option>
+                      <option value="Sold">Sold</option>
+                      <option value="Rented">Rented</option>
+                      <option value="Unavailable">Unavailable</option>
+                    </select>
+                  </div>
+                  <div className="space-y-4 rounded-3xl border border-slate-200 bg-slate-50 p-4">
+                    <h4 className="text-lg font-bold text-slate-900">Video Tour</h4>
+                    <div>
+                      <label className="block text-sm font-semibold text-slate-600 mb-2">Video Tour URL</label>
+                      <input
+                        value={propertyDraft.videoTourUrl || ''}
+                        onChange={(e) => onPropertyDraftChange({ videoTourUrl: e.target.value })}
+                        placeholder="Paste YouTube, Vimeo, or direct MP4 URL"
+                        className="w-full rounded-2xl border border-slate-200 px-4 py-3"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-semibold text-slate-600 mb-2">Upload Video File</label>
+                      <input
+                        type="file"
+                        accept="video/mp4,video/webm,video/ogg"
+                        onChange={(e) => setSelectedVideoFile(e.target.files?.[0] ?? null)}
+                        className="w-full text-sm text-slate-600"
+                      />
+                      {selectedVideoFile && <p className="mt-2 text-slate-500 text-sm">Selected file: {selectedVideoFile.name}</p>}
+                      {uploadError && <p className="text-red-600 text-sm mt-2">{uploadError}</p>}
+                      <button
+                        type="button"
+                        onClick={() => onUploadVideo(propertyDraft.id, selectedVideoFile)}
+                        disabled={isUploadingVideo}
+                        className="mt-4 w-full bg-slate-900 text-white py-3 rounded-2xl font-semibold hover:bg-slate-800 transition-all disabled:opacity-60"
+                      >
+                        {isUploadingVideo ? 'Uploading...' : 'Upload Video'}
+                      </button>
+                    </div>
+                    {propertyDraft.videoTourUrl && (
+                      <div className="space-y-2">
+                        <p className="text-sm text-slate-500">Current video tour preview:</p>
+                        <div className="relative aspect-video rounded-3xl overflow-hidden border border-slate-200 bg-black">
+                          {isVideoFileUrl(propertyDraft.videoTourUrl) ? (
+                            <video controls src={propertyDraft.videoTourUrl} className="absolute inset-0 w-full h-full object-contain" />
+                          ) : (
+                            <iframe
+                              src={getEmbedUrl(propertyDraft.videoTourUrl) || propertyDraft.videoTourUrl}
+                              className="absolute inset-0 w-full h-full"
+                              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                              allowFullScreen
+                              title="Property Video Preview"
+                            />
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => onSaveProperty(propertyDraft)}
+                    className="w-full bg-emerald-600 text-white py-3 rounded-2xl font-semibold hover:bg-emerald-700 transition-all"
+                  >
+                    Save Property
+                  </button>
+                </div>
+              ) : (
+                <p className="text-sm text-slate-500">Select a property to edit its details.</p>
+              )}
+            </div>
+          </section>
+        </div>
+      </motion.div>
+    </motion.div>
+  );
+};
+
+const Testimonials = ({ config }: { config: SiteConfig }) => {
+  const [testimonials, setTestimonials] = useState<Testimonial[]>(config.testimonials);
+  const [newTestimonial, setNewTestimonial] = useState({ name: "", content: "", role: "Client" });
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSubmitError(null);
+
+    if (!newTestimonial.name.trim() || !newTestimonial.content.trim()) {
+      setSubmitError('Please provide both a name and testimonial content.');
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    try {
+      const response = await fetch('/api/testimonial', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newTestimonial),
+      });
+
+      const result = await response.json();
+      if (!response.ok) {
+        throw new Error(result.error || 'Unable to submit testimonial.');
+      }
+
+      const testimonial: Testimonial = {
+        id: `T-${Date.now()}`,
+        name: newTestimonial.name,
+        role: newTestimonial.role,
+        content: newTestimonial.content,
+        photo: `https://picsum.photos/seed/${Date.now()}/200/200`,
+        rating: 5,
+        date: new Date().toISOString().split('T')[0]
+      };
+
+      setTestimonials([testimonial, ...testimonials]);
+      setNewTestimonial({ name: "", content: "", role: "Client" });
+    } catch (err) {
+      console.error(err);
+      setSubmitError('Unable to submit testimonial. Please try again later.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  return (
+    <section className="py-24 bg-slate-50 overflow-hidden">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="text-center mb-16">
+          <h2 className="text-4xl font-extrabold text-slate-900 mb-4">Client Testimonials</h2>
+          <p className="text-slate-500 max-w-2xl mx-auto">Hear from our satisfied clients about their experiences with LPHASK Homes & Properties.</p>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-16">
+          {testimonials.map((t) => (
+            <motion.div 
+              key={t.id}
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              className="bg-white p-8 rounded-[2.5rem] shadow-xl shadow-slate-200/50 relative"
+            >
+              <div className="flex items-center gap-4 mb-6">
+                <img src={t.photo} alt={t.name} className="w-14 h-14 rounded-full object-cover border-2 border-emerald-100" />
+                <div>
+                  <h4 className="font-bold text-slate-900">{t.name}</h4>
+                  <p className="text-sm text-slate-500">{t.role}</p>
+                </div>
+              </div>
+              <p className="text-slate-600 italic mb-6 leading-relaxed">"{t.content}"</p>
+              <div className="flex text-amber-400">
+                {[...Array(t.rating)].map((_, i) => (
+                  <CheckCircle2 key={i} size={16} fill="currentColor" />
+                ))}
+              </div>
+            </motion.div>
+          ))}
+        </div>
+
+        {/* Leave Testimonial Bar */}
+        <div className="bg-emerald-900 rounded-[3rem] p-8 md:p-12 text-white relative overflow-hidden">
+          <div className="absolute top-0 right-0 w-64 h-64 bg-emerald-800 rounded-full -translate-y-1/2 translate-x-1/2 blur-3xl opacity-50"></div>
+          <div className="relative z-10 flex flex-col lg:flex-row items-center justify-between gap-12">
+            <div className="max-w-md">
+              <h3 className="text-3xl font-bold mb-4">Share Your Experience</h3>
+              <p className="text-emerald-100/80">We value your feedback! Let us know how we've helped you find your perfect home or manage your property.</p>
+            </div>
+            <form onSubmit={handleSubmit} className="w-full lg:max-w-2xl flex flex-col sm:flex-row gap-4">
+              <div className="flex-1 space-y-4">
+                <input 
+                  type="text" 
+                  placeholder="Your Name" 
+                  className="w-full bg-white/10 border border-white/20 rounded-2xl px-6 py-4 outline-none focus:bg-white/20 transition-all placeholder:text-emerald-100/50"
+                  value={newTestimonial.name}
+                  onChange={(e) => setNewTestimonial({ ...newTestimonial, name: e.target.value })}
+                  required
+                />
+                <textarea 
+                  placeholder="Your Testimonial" 
+                  className="w-full bg-white/10 border border-white/20 rounded-2xl px-6 py-4 outline-none focus:bg-white/20 transition-all placeholder:text-emerald-100/50 h-24 resize-none"
+                  value={newTestimonial.content}
+                  onChange={(e) => setNewTestimonial({ ...newTestimonial, content: e.target.value })}
+                  required
+                />
+                {submitError && <p className="text-red-200 text-sm">{submitError}</p>}
+              </div>
+              <button 
+                type="submit" 
+                disabled={isSubmitting}
+                className="bg-white text-emerald-900 px-10 py-4 rounded-2xl font-bold text-lg hover:bg-emerald-50 transition-all self-center sm:self-end h-fit disabled:opacity-50"
+              >
+                {isSubmitting ? "Submitting..." : "Submit"}
+              </button>
+            </form>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+};
+
+export default function App() {
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedProperty, setSelectedProperty] = useState<Property | null>(null);
+  const [comparisonList, setComparisonList] = useState<string[]>([]);
+  const [userLocation, setUserLocation] = useState<{ lat: number, lng: number } | null>(null);
+  const [showComparison, setShowComparison] = useState(false);
+  const [selectedService, setSelectedService] = useState<string | undefined>(undefined);
+  const [properties, setProperties] = useState<Property[]>(PROPERTIES);
+  const [viewingRequestProperty, setViewingRequestProperty] = useState<Property | null>(null);
+  const [infoRequestProperty, setInfoRequestProperty] = useState<Property | null>(null);
+  const [config, setConfig] = useState<SiteConfig>(INITIAL_CONFIG);
+  const [showAdminLogin, setShowAdminLogin] = useState(false);
+  const [showAdminPanel, setShowAdminPanel] = useState(false);
+  const [isAdminAuthenticated, setIsAdminAuthenticated] = useState(false);
+  const [adminError, setAdminError] = useState<string | null>(null);
+  const [resetMode, setResetMode] = useState<'idle' | 'request' | 'complete'>('idle');
+  const [resetEmail, setResetEmail] = useState('');
+  const [resetToken, setResetToken] = useState('');
+  const [resetNewPassword, setResetNewPassword] = useState('');
+  const [resetMessage, setResetMessage] = useState<string | null>(null);
+  const [selectedAdminPropertyId, setSelectedAdminPropertyId] = useState<string | null>(PROPERTIES[0]?.id ?? null);
+  const [adminPropertyDraft, setAdminPropertyDraft] = useState<Property | null>(PROPERTIES[0] ?? null);
+  const [adminSettingsDraft, setAdminSettingsDraft] = useState<SiteConfig>(INITIAL_CONFIG);
+  const [adminPropertySearch, setAdminPropertySearch] = useState('');
+  const [adminPropertyStatusFilter, setAdminPropertyStatusFilter] = useState('All');
+  const [selectedVideoFile, setSelectedVideoFile] = useState<File | null>(null);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const [isUploadingVideo, setIsUploadingVideo] = useState(false);
+  const [statsConfig, setStatsConfig] = useState({
+    propertiesManaged: config.propertiesManaged || '500+',
+    happyClients: config.happyClients || '1.2k',
+    yearsExperience: config.yearsExperience || '15+',
+    secureTransactions: config.secureTransactions || '100%'
+  });
+
+  const handleSelectService = (service: string) => {
+    setSelectedService(service);
+    const contactSection = document.getElementById('contact');
+    if (contactSection) {
+      contactSection.scrollIntoView({ behavior: 'smooth' });
+    }
+  };
+
+  const handleBookViewing = () => {
+    const contactSection = document.getElementById('contact');
+    if (contactSection) {
+      contactSection.scrollIntoView({ behavior: 'smooth' });
+    }
+  };
+
+  const loadAppConfig = useCallback(async () => {
+    try {
+      const response = await fetch('/api/config');
+      if (!response.ok) {
+        throw new Error('Unable to fetch configuration');
+      }
+      const data = await response.json();
+      if (data.config) {
+        setConfig(data.config);
+        setAdminSettingsDraft(data.config);
+      }
+      if (Array.isArray(data.properties) && data.properties.length > 0) {
+        setProperties(data.properties);
+        setSelectedAdminPropertyId((prev) => prev || data.properties[0]?.id || null);
+      }
+    } catch (error) {
+      console.warn('Failed to load remote configuration:', error);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadAppConfig();
+  }, [loadAppConfig]);
+
+  useEffect(() => {
+    if (!selectedAdminPropertyId && properties.length > 0) {
+      setSelectedAdminPropertyId(properties[0].id);
+    }
+  }, [properties, selectedAdminPropertyId]);
+
+  useEffect(() => {
+    const selectedProperty = properties.find((item) => item.id === selectedAdminPropertyId) ?? properties[0] ?? null;
+    setAdminPropertyDraft(selectedProperty);
+  }, [properties, selectedAdminPropertyId]);
+
+  useEffect(() => {
+    const handleOpenAdmin = () => setShowAdminLogin(true);
+    window.addEventListener('open-admin-login', handleOpenAdmin as EventListener);
+    return () => window.removeEventListener('open-admin-login', handleOpenAdmin as EventListener);
+  }, []);
+
+  const openAdminPanel = () => {
+    setAdminError(null);
+    setShowAdminLogin(false);
+    setShowAdminPanel(true);
+  };
+
+  const closeAdminPanel = () => {
+    setShowAdminPanel(false);
+    setAdminError(null);
+  };
+
+  const handleAdminLogin = async (password: string) => {
+    try {
+      const response = await fetch('/api/admin/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ password }),
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        setAdminError(data.error || 'Unable to authenticate admin.');
+        return;
+      }
+      setIsAdminAuthenticated(true);
+      setAdminError(null);
+      openAdminPanel();
+    } catch (error) {
+      console.error(error);
+      setAdminError('Unable to authenticate admin.');
+    }
+  };
+
+  const handleOpenAdminReset = () => {
+    setShowAdminLogin(false);
+    setResetMode('request');
+    setResetMessage(null);
+    setResetEmail('');
+    setResetToken('');
+    setResetNewPassword('');
+  };
+
+  const handleAdminLogout = async () => {
+    try {
+      await fetch('/api/admin/logout', {
+        method: 'POST',
+        credentials: 'include',
+      });
+    } catch (error) {
+      console.warn('Logout request failed', error);
+    }
+    setIsAdminAuthenticated(false);
+    setShowAdminPanel(false);
+  };
+
+  const handleSaveSettings = async (settings: SiteConfig) => {
+    try {
+      const response = await fetch('/api/admin/settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ settings }),
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.error || 'Unable to save settings.');
+      }
+      setConfig(data.settings);
+      setAdminSettingsDraft(data.settings);
+    } catch (error) {
+      console.error(error);
+      setAdminError('Unable to save settings.');
+    }
+  };
+
+  const handleChangeAdminPassword = async (currentPassword: string, newPassword: string) => {
+    try {
+      const response = await fetch('/api/admin/change-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ currentPassword, newPassword }),
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.error || 'Unable to change password.');
+      }
+      setAdminError(null);
+    } catch (error) {
+      console.error(error);
+      setAdminError('Unable to change password.');
+    }
+  };
+
+  const handleRequestAdminReset = async (email: string) => {
+    try {
+      const response = await fetch('/api/admin/request-reset', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email }),
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.error || 'Unable to initiate password reset.');
+      }
+      setResetMode('complete');
+      setResetMessage('A reset code was sent to your admin email. Enter the code and new password to continue.');
+    } catch (error) {
+      console.error(error);
+      setResetMessage('Unable to initiate password reset.');
+    }
+  };
+
+  const handleCompleteAdminReset = async (email: string, token: string, newPassword: string) => {
+    try {
+      const response = await fetch('/api/admin/complete-reset', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, token, newPassword }),
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.error || 'Unable to complete password reset.');
+      }
+      setResetMode('idle');
+      setResetEmail('');
+      setResetToken('');
+      setResetNewPassword('');
+      setResetMessage('Password reset complete. You can now log in with your new password.');
+    } catch (error) {
+      console.error(error);
+      setResetMessage('Unable to complete password reset.');
+    }
+  };
+
+  const handleSaveProperty = async (property: Property) => {
+    try {
+      const updates = {
+        title: property.title,
+        location: property.location,
+        price: property.price,
+        description: property.description,
+        status: property.status,
+        virtualTourUrl: property.virtualTourUrl,
+        videoTourUrl: property.videoTourUrl,
+        tags: property.tags,
+      };
+      const response = await fetch('/api/admin/property', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ id: property.id, updates }),
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.error || 'Unable to save property.');
+      }
+      setProperties((prev) => prev.map((item) => (item.id === property.id ? data.property : item)));
+      setAdminPropertyDraft(data.property);
+    } catch (error) {
+      console.error(error);
+      setAdminError('Unable to save property.');
+    }
+  };
+
+  const handleUploadPropertyVideo = async (propertyId: string, file: File | null) => {
+    if (!file) {
+      setUploadError('Please select a video file before uploading.');
+      return;
+    }
+
+    setUploadError(null);
+    setIsUploadingVideo(true);
+    try {
+      const formData = new FormData();
+      formData.append('propertyId', propertyId);
+      formData.append('video', file);
+      const response = await fetch('/api/admin/upload-video', {
+        method: 'POST',
+        body: formData,
+        credentials: 'include',
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.error || 'Unable to upload video.');
+      }
+      setProperties((prev) => prev.map((item) => (item.id === propertyId ? data.property : item)));
+      setAdminPropertyDraft(data.property);
+      setSelectedVideoFile(null);
+    } catch (error) {
+      console.error(error);
+      setUploadError('Unable to upload video file.');
+    } finally {
+      setIsUploadingVideo(false);
+    }
+  };
+
+  const filteredAdminProperties = useMemo(() => {
+    const normalizedSearch = adminPropertySearch.trim().toLowerCase();
+    return properties.filter((property) => {
+      const matchesSearch =
+        !normalizedSearch ||
+        property.title.toLowerCase().includes(normalizedSearch) ||
+        property.location.toLowerCase().includes(normalizedSearch) ||
+        property.id.toLowerCase().includes(normalizedSearch) ||
+        property.status.toLowerCase().includes(normalizedSearch) ||
+        property.tags?.some((tag) => tag.toLowerCase().includes(normalizedSearch));
+      const matchesStatus = adminPropertyStatusFilter === 'All' || property.status === adminPropertyStatusFilter;
+      return matchesSearch && matchesStatus;
+    });
+  }, [properties, adminPropertySearch, adminPropertyStatusFilter]);
+
+  const handleAdminPropertyChange = (updates: Partial<Property>) => {
+    if (!adminPropertyDraft) return;
+    setAdminPropertyDraft({ ...adminPropertyDraft, ...updates });
+  };
+
+  const handleAdminSettingsChange = (updates: Partial<SiteConfig>) => {
+    setAdminSettingsDraft({ ...adminSettingsDraft, ...updates });
+  };
+
+  useEffect(() => {
+    setAdminSettingsDraft(config);
+    setStatsConfig({
+      propertiesManaged: config.propertiesManaged || '500+',
+      happyClients: config.happyClients || '1.2k',
+      yearsExperience: config.yearsExperience || '15+',
+      secureTransactions: config.secureTransactions || '100%'
+    });
+  }, [config]);
+
+  const handleSaveAdminSettings = async () => {
+    if (!isAdminAuthenticated) {
+      setAdminError('Admin is not authenticated.');
+      return;
+    }
+    await handleSaveSettings(adminSettingsDraft);
+  };
+
+  const selectAdminProperty = (id: string) => {
+    setSelectedAdminPropertyId(id);
+  };
+
+  useEffect(() => {
+    if ("geolocation" in navigator) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          setUserLocation({
+            lat: position.coords.latitude,
+            lng: position.coords.longitude
+          });
+        },
+        (error) => {
+          console.error("Error getting location:", error);
+        }
+      );
+    }
+  }, []);
+
+  const filteredProperties = useMemo(() => {
+    if (!searchQuery.trim()) return properties;
+    const q = searchQuery.toLowerCase();
+    return properties.filter(p => 
+      p.title.toLowerCase().includes(q) || 
+      p.location.toLowerCase().includes(q) || 
+      p.category.toLowerCase().includes(q) ||
+      p.id.toLowerCase() === q ||
+      p.tags?.some(tag => tag.toLowerCase().includes(q))
+    );
+  }, [searchQuery, properties]);
+
+  const toggleComparison = useCallback((property: Property) => {
+    setComparisonList(prev => {
+      if (prev.includes(property.id)) {
+        return prev.filter(id => id !== property.id);
+      }
+      if (prev.length >= 4) return prev;
+      return [...prev, property.id];
+    });
+  }, []);
+
+  const comparisonProperties = useMemo(() => {
+    return properties.filter(p => comparisonList.includes(p.id));
+  }, [comparisonList, properties]);
+
+  return (
+    <main className="min-h-screen">
+      <SEOData config={config} />
+      <Navbar onSearch={setSearchQuery} onBookViewing={handleBookViewing} config={config} />
+      <Hero onSearch={setSearchQuery} properties={properties} config={config} />
+      <Services onSelectService={handleSelectService} config={config} />
+      <Office config={config} />
+      <Testimonials config={config} />
+      <div id="listings-container">
+        <Listings 
+          type="rent" 
+          properties={filteredProperties} 
+          onSelect={setSelectedProperty}
+          onCompare={toggleComparison}
+          comparisonList={comparisonList}
+          userLocation={userLocation}
+          onRequestViewing={setViewingRequestProperty}
+          onRequestInfo={setInfoRequestProperty}
+        />
+        <Listings 
+          type="sale" 
+          properties={filteredProperties} 
+          onSelect={setSelectedProperty}
+          onCompare={toggleComparison}
+          comparisonList={comparisonList}
+          userLocation={userLocation}
+          onRequestViewing={setViewingRequestProperty}
+          onRequestInfo={setInfoRequestProperty}
+        />
+      </div>
+
+      <Contact initialService={selectedService} config={config} />
+      <Footer config={config} />
+
+      <AIChatBot properties={properties} />
+
+      <ComparisonBar 
+        count={comparisonList.length} 
+        onExpand={() => setShowComparison(true)}
+        onClear={() => setComparisonList([])}
+      />
+
+      {showAdminLogin && !showAdminPanel && (
+        <AdminLoginModal
+          onClose={() => setShowAdminLogin(false)}
+          onLogin={handleAdminLogin}
+          onForgot={handleOpenAdminReset}
+          error={adminError ?? undefined}
+        />
+      )}
+
+      {resetMode !== 'idle' && !showAdminPanel && (
+        <AdminResetModal
+          onClose={() => setResetMode('idle')}
+          email={resetEmail}
+          token={resetToken}
+          newPassword={resetNewPassword}
+          onChangeEmail={setResetEmail}
+          onChangeToken={setResetToken}
+          onChangeNewPassword={setResetNewPassword}
+          onRequestReset={() => handleRequestAdminReset(resetEmail)}
+          onCompleteReset={() => handleCompleteAdminReset(resetEmail, resetToken, resetNewPassword)}
+          message={resetMessage}
+        />
+      )}
+
+      {showAdminPanel && isAdminAuthenticated && (
+        <AdminPanel
+          config={config}
+          properties={properties}
+          selectedPropertyId={selectedAdminPropertyId}
+          onSelectProperty={selectAdminProperty}
+          propertyDraft={adminPropertyDraft}
+          onPropertyDraftChange={handleAdminPropertyChange}
+          onSaveSettings={handleSaveAdminSettings}
+          onSaveProperty={async (property) => {
+            if (property) await handleSaveProperty(property);
+          }}
+          onChangePassword={handleChangeAdminPassword}
+          onLogout={handleAdminLogout}
+          onClose={closeAdminPanel}
+          adminError={adminError}
+          onSettingsChange={handleAdminSettingsChange}
+          settingsDraft={adminSettingsDraft}
+          adminPropertySearch={adminPropertySearch}
+          setAdminPropertySearch={setAdminPropertySearch}
+          adminPropertyStatusFilter={adminPropertyStatusFilter}
+          setAdminPropertyStatusFilter={setAdminPropertyStatusFilter}
+          filteredAdminProperties={filteredAdminProperties}
+          selectedVideoFile={selectedVideoFile}
+          setSelectedVideoFile={setSelectedVideoFile}
+          uploadError={uploadError}
+          isUploadingVideo={isUploadingVideo}
+        />
+      )}
+
+      {/* Overlays */}
+      <AnimatePresence>
+        {selectedProperty && (
+          <PropertyDetail 
+            property={selectedProperty} 
+            onClose={() => setSelectedProperty(null)} 
+            onRequestViewing={(p) => {
+              setSelectedProperty(null);
+              setViewingRequestProperty(p);
+            }}
+            onRequestInfo={(p) => {
+              setSelectedProperty(null);
+              setInfoRequestProperty(p);
+            }}
+          />
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {viewingRequestProperty && (
+          <ViewingRequestModal 
+            property={viewingRequestProperty} 
+            onClose={() => setViewingRequestProperty(null)} 
+          />
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {infoRequestProperty && (
+          <RequestInfoModal 
+            property={infoRequestProperty} 
+            onClose={() => setInfoRequestProperty(null)} 
+          />
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {showComparison && comparisonList.length > 0 && (
+          <ComparisonTool 
+            properties={comparisonProperties} 
+            onClose={() => setShowComparison(false)}
+            onRemove={(id) => setComparisonList(prev => prev.filter(pId => pId !== id))}
+          />
+        )}
+      </AnimatePresence>
+
+    </main>
+  );
+}
