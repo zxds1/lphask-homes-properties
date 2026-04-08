@@ -160,6 +160,30 @@ const INITIAL_CONFIG: SiteConfig = {
 
 const PROPERTIES: Property[] = []; // Property inventory is loaded from the secure backend store.
 
+const normalizeSearchValue = (value: unknown) => String(value ?? '').trim().toLowerCase();
+
+const matchesPropertySearch = (property: Property, query: string) => {
+  const normalizedQuery = normalizeSearchValue(query);
+  if (!normalizedQuery) return true;
+
+  const searchableFields = [
+    property.id,
+    property.title,
+    property.location,
+    property.category,
+    property.status,
+    property.description,
+    property.type,
+    property.leaseDuration,
+    property.plotSize,
+    property.zoning,
+    ...(property.amenities ?? []),
+    ...(property.tags ?? []),
+  ];
+
+  return searchableFields.some((field) => normalizeSearchValue(field).includes(normalizedQuery));
+};
+
 // --- SEO & Structured Data ---
 const SEOData = ({ config }: { config: SiteConfig }) => {
   const structuredData = {
@@ -197,7 +221,7 @@ const IconRenderer = ({ name, className, size = 24 }: { name: string, className?
   return <Icon className={className} size={size} />;
 };
 
-const Navbar = ({ onSearch, onBookViewing, config }: { onSearch: (val: string) => void, onBookViewing: () => void, config: SiteConfig }) => {
+const Navbar = ({ onSearch, searchValue, onBookViewing, config }: { onSearch: (val: string) => void, searchValue: string, onBookViewing: () => void, config: SiteConfig }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
 
@@ -235,6 +259,7 @@ const Navbar = ({ onSearch, onBookViewing, config }: { onSearch: (val: string) =
                   type="text" 
                   placeholder="Quick search..." 
                   className="bg-transparent text-sm text-slate-900 focus:outline-none w-32 focus:w-48 transition-all"
+                  value={searchValue}
                   onChange={(e) => onSearch(e.target.value)}
                 />
               </div>
@@ -279,6 +304,7 @@ const Navbar = ({ onSearch, onBookViewing, config }: { onSearch: (val: string) =
                   type="text" 
                   placeholder="Search properties..." 
                   className="bg-transparent text-base text-slate-900 focus:outline-none w-full"
+                  value={searchValue}
                   onChange={(e) => onSearch(e.target.value)}
                 />
               </div>
@@ -313,13 +339,15 @@ const Hero = ({ onSearch, properties, config }: { onSearch: (val: string) => voi
   const [showSuggestions, setShowSuggestions] = useState(false);
 
   const suggestions = useMemo(() => {
-    if (!searchValue.trim()) return [];
-    const q = searchValue.toLowerCase();
+    const q = normalizeSearchValue(searchValue);
+    if (!q) return [];
     const matches = new Set<string>();
     
     properties.forEach(p => {
-      if (p.title.toLowerCase().includes(q)) matches.add(p.title);
-      if (p.location.toLowerCase().includes(q)) matches.add(p.location);
+      if (matchesPropertySearch(p, q)) {
+        matches.add(p.title);
+        matches.add(p.location);
+      }
     });
     
     return Array.from(matches).slice(0, 5);
@@ -873,10 +901,20 @@ const isVideoFileUrl = (url: string) => {
   return /\.(mp4|webm|ogg)(\?.*)?$/i.test(url) || url.startsWith('data:video/');
 };
 
+const isSafeHttpUrl = (url: string) => {
+  try {
+    const parsed = new URL(url, window.location.origin);
+    return parsed.protocol === 'http:' || parsed.protocol === 'https:';
+  } catch {
+    return false;
+  }
+};
+
 const getEmbedUrl = (url: string) => {
   if (!url) return null;
   if (url.startsWith('data:video/')) return null; // Base64 video
   if (isVideoFileUrl(url)) return null;
+  if (!isSafeHttpUrl(url)) return null;
   if (url.includes('youtube.com/watch?v=')) {
     return url.replace('watch?v=', 'embed/');
   }
@@ -886,7 +924,7 @@ const getEmbedUrl = (url: string) => {
   if (url.includes('vimeo.com/')) {
     return url.replace('vimeo.com/', 'player.vimeo.com/video/');
   }
-  return url;
+  return null;
 };
 
 const getGoogleMapsSearchUrl = (location: string) => {
@@ -1041,7 +1079,7 @@ const PropertyDetail = ({ property, onClose, onRequestViewing, onRequestInfo }: 
                       controls 
                       className="absolute inset-0 w-full h-full object-contain"
                     />
-                  ) : (
+                  ) : getEmbedUrl(property.videoTourUrl) ? (
                     <iframe 
                       src={getEmbedUrl(property.videoTourUrl) || ""} 
                       className="absolute inset-0 w-full h-full"
@@ -1049,6 +1087,22 @@ const PropertyDetail = ({ property, onClose, onRequestViewing, onRequestInfo }: 
                       allowFullScreen
                       title="Video Tour"
                     ></iframe>
+                  ) : isSafeHttpUrl(property.videoTourUrl) ? (
+                    <div className="absolute inset-0 flex items-center justify-center p-6 text-center">
+                      <a
+                        href={property.videoTourUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-2 rounded-2xl bg-white px-5 py-3 font-bold text-slate-900 hover:bg-emerald-500 hover:text-white transition-all"
+                      >
+                        <ExternalLink size={18} />
+                        Open video tour
+                      </a>
+                    </div>
+                  ) : (
+                    <div className="absolute inset-0 flex items-center justify-center p-6 text-center text-white/70">
+                      Video preview unavailable.
+                    </div>
                   )}
                 </div>
               </div>
@@ -1090,7 +1144,7 @@ const PropertyDetail = ({ property, onClose, onRequestViewing, onRequestInfo }: 
               >
                 Request Info
               </button>
-              {property.virtualTourUrl && (
+              {property.virtualTourUrl && isSafeHttpUrl(property.virtualTourUrl) && (
                 <a 
                   href={property.virtualTourUrl} 
                   target="_blank" 
@@ -3097,7 +3151,7 @@ const AdminPanel = ({
                         <div className="relative aspect-video rounded-3xl overflow-hidden border border-slate-200 bg-black">
                           {isVideoFileUrl(propertyDraft.videoTourUrl) ? (
                             <video controls src={propertyDraft.videoTourUrl} className="absolute inset-0 w-full h-full object-contain" />
-                          ) : (
+                          ) : getEmbedUrl(propertyDraft.videoTourUrl) ? (
                             <iframe
                               src={getEmbedUrl(propertyDraft.videoTourUrl) || propertyDraft.videoTourUrl}
                               className="absolute inset-0 w-full h-full"
@@ -3105,6 +3159,22 @@ const AdminPanel = ({
                               allowFullScreen
                               title="Property Video Preview"
                             />
+                          ) : isSafeHttpUrl(propertyDraft.videoTourUrl) ? (
+                            <div className="absolute inset-0 flex items-center justify-center p-6 text-center">
+                              <a
+                                href={propertyDraft.videoTourUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center gap-2 rounded-2xl bg-white px-5 py-3 font-bold text-slate-900 hover:bg-emerald-500 hover:text-white transition-all"
+                              >
+                                <ExternalLink size={18} />
+                                Open video tour
+                              </a>
+                            </div>
+                          ) : (
+                            <div className="absolute inset-0 flex items-center justify-center p-6 text-center text-white/70">
+                              Video preview unavailable.
+                            </div>
                           )}
                         </div>
                       </div>
@@ -3390,6 +3460,25 @@ export default function App() {
     }
   }, []);
 
+  const loadAdminConfig = useCallback(async () => {
+    try {
+      const response = await fetch('/api/admin/config', { credentials: 'include' });
+      if (!response.ok) {
+        throw new Error('Unable to fetch admin configuration');
+      }
+      const data = await response.json();
+      if (data.config) {
+        setAdminSettingsDraft(data.config);
+      }
+      if (Array.isArray(data.properties) && data.properties.length > 0) {
+        setProperties(data.properties);
+        setSelectedAdminPropertyId((prev) => prev || data.properties[0]?.id || null);
+      }
+    } catch (error) {
+      console.warn('Failed to load admin configuration:', error);
+    }
+  }, []);
+
   useEffect(() => {
     loadAppConfig();
   }, [loadAppConfig]);
@@ -3437,6 +3526,7 @@ export default function App() {
       }
       setIsAdminAuthenticated(true);
       setAdminError(null);
+      await loadAdminConfig();
       openAdminPanel();
     } catch (error) {
       console.error(error);
@@ -3459,6 +3549,7 @@ export default function App() {
       }
       setIsAdminAuthenticated(true);
       setAdminError(null);
+      await loadAdminConfig();
       openAdminPanel();
     } catch (error) {
       console.error(error);
@@ -3703,15 +3794,8 @@ export default function App() {
   };
 
   const filteredAdminProperties = useMemo(() => {
-    const normalizedSearch = adminPropertySearch.trim().toLowerCase();
     return properties.filter((property) => {
-      const matchesSearch =
-        !normalizedSearch ||
-        property.title.toLowerCase().includes(normalizedSearch) ||
-        property.location.toLowerCase().includes(normalizedSearch) ||
-        property.id.toLowerCase().includes(normalizedSearch) ||
-        property.status.toLowerCase().includes(normalizedSearch) ||
-        property.tags?.some((tag) => tag.toLowerCase().includes(normalizedSearch));
+      const matchesSearch = matchesPropertySearch(property, adminPropertySearch);
       const matchesStatus = adminPropertyStatusFilter === 'All' || property.status === adminPropertyStatusFilter;
       return matchesSearch && matchesStatus;
     });
@@ -3765,27 +3849,7 @@ export default function App() {
   }, []);
 
   const filteredProperties = useMemo(() => {
-    const query = searchQuery.trim().toLowerCase();
-    if (!query) return properties;
-    return properties.filter(p => {
-      const title = p.title.toLowerCase();
-      const location = p.location.toLowerCase();
-      const category = p.category.toLowerCase();
-      const id = p.id.toLowerCase();
-      const status = p.status.toLowerCase();
-      const description = (p.description || '').toLowerCase();
-      const tags = p.tags?.map(tag => tag.toLowerCase()) || [];
-
-      return (
-        title.includes(query) ||
-        location.includes(query) ||
-        category.includes(query) ||
-        id.includes(query) ||
-        status.includes(query) ||
-        description.includes(query) ||
-        tags.some(tag => tag.includes(query))
-      );
-    });
+    return properties.filter((property) => matchesPropertySearch(property, searchQuery));
   }, [searchQuery, properties]);
 
   const toggleComparison = useCallback((property: Property) => {
@@ -3805,7 +3869,7 @@ export default function App() {
   return (
     <main className="min-h-screen">
       <SEOData config={config} />
-      <Navbar onSearch={setSearchQuery} onBookViewing={handleBookViewing} config={config} />
+      <Navbar onSearch={setSearchQuery} searchValue={searchQuery} onBookViewing={handleBookViewing} config={config} />
       <Hero onSearch={setSearchQuery} properties={properties} config={config} />
       <Services onSelectService={handleSelectService} config={config} />
       <Office config={config} />

@@ -134,7 +134,7 @@ app.use(
 );
 
 const adminSessions = new Map<string, number>();
-const loginAttempts = new Map<string, number[]>();
+const rateLimitBuckets = new Map<string, number[]>();
 
 const parseCookies = (cookieHeader?: string) => {
   return (cookieHeader || '')
@@ -166,13 +166,15 @@ const cleanExpiredSessions = () => {
 
 const recordRateLimit = (key: string, maxRequests: number, windowMs: number) => {
   const now = Date.now();
-  const attempts = loginAttempts.get(key) || [];
+  const attempts = rateLimitBuckets.get(key) || [];
   const windowStart = now - windowMs;
   const recentAttempts = attempts.filter((timestamp) => timestamp > windowStart);
   recentAttempts.push(now);
-  loginAttempts.set(key, recentAttempts);
+  rateLimitBuckets.set(key, recentAttempts);
   return recentAttempts.length <= maxRequests;
 };
+
+const getRateLimitKey = (req: Request, route: string) => `${route}:${getClientIp(req)}`;
 
 const createAdminToken = () => {
   const rawToken = crypto.randomBytes(32).toString('hex');
@@ -203,6 +205,25 @@ const ensureAdminAuthenticated = (req: Request, res: Response) => {
 };
 
 const normalizeEmail = (email: string) => email.trim().toLowerCase();
+
+const isSafeHttpUrl = (value: string) => {
+  try {
+    const parsed = new URL(value);
+    return parsed.protocol === 'http:' || parsed.protocol === 'https:';
+  } catch {
+    return false;
+  }
+};
+
+const isSafeMediaSetting = (value: string) => {
+  if (!value.trim()) return true;
+  return isSafeHttpUrl(value) || value.startsWith('/uploads/');
+};
+
+const isAllowedTourUrl = (value: string) => {
+  if (!value.trim()) return true;
+  return isSafeHttpUrl(value);
+};
 
 const hashPassword = (password: string, salt?: string) => {
   const actualSalt = salt || crypto.randomBytes(16).toString('hex');
@@ -356,6 +377,21 @@ const sanitizeSettings = (settings: any) => {
       continue;
     }
     if (typeof value === 'string') {
+      if (
+        key === 'heroBgImage' ||
+        key === 'servicesBgImage' ||
+        key === 'officeBgImage' ||
+        key === 'testimonialsBgImage' ||
+        key === 'rentalsBgImage' ||
+        key === 'salesBgImage' ||
+        key === 'contactBgImage' ||
+        key === 'footerBgImage'
+      ) {
+        if (isSafeMediaSetting(value)) {
+          validSettings[key] = sanitizeText(value);
+        }
+        continue;
+      }
       validSettings[key] = sanitizeText(value);
     }
   }
@@ -413,10 +449,16 @@ const validatePropertyUpdates = (updates: any) => {
     updatedProperty.amenities = updates.amenities.filter((a: any) => typeof a === 'string').map((a: string) => sanitizeText(a));
   }
   if ('virtualTourUrl' in updates && typeof updates.virtualTourUrl === 'string') {
-    updatedProperty.virtualTourUrl = sanitizeText(updates.virtualTourUrl);
+    const value = sanitizeText(updates.virtualTourUrl);
+    if (isAllowedTourUrl(value)) {
+      updatedProperty.virtualTourUrl = value;
+    }
   }
   if ('videoTourUrl' in updates && typeof updates.videoTourUrl === 'string') {
-    updatedProperty.videoTourUrl = sanitizeText(updates.videoTourUrl);
+    const value = sanitizeText(updates.videoTourUrl);
+    if (isAllowedTourUrl(value) || value.startsWith('/uploads/') || value.startsWith('data:video/')) {
+      updatedProperty.videoTourUrl = value;
+    }
   }
   if ('tags' in updates && Array.isArray(updates.tags)) {
     updatedProperty.tags = updates.tags.filter((tag: any) => typeof tag === 'string').map((tag: string) => sanitizeText(tag));
@@ -432,16 +474,30 @@ app.get('/api/health', (_req, res) => {
 app.get('/api/config', async (_req, res) => {
   try {
     const store = await readStore();
-    return res.json({ config: store.settings, properties: store.properties });
+    const { adminEmail: _adminEmail, ...publicConfig } = store.settings || {};
+    return res.json({ config: publicConfig, properties: store.properties });
   } catch (error) {
     console.error('Unable to load config:', error);
     return res.status(500).json({ error: 'Unable to load application configuration.' });
   }
 });
 
+app.get('/api/admin/config', async (req, res) => {
+  if (!ensureAdminAuthenticated(req, res)) {
+    return;
+  }
+
+  try {
+    const store = await readStore();
+    return res.json({ config: store.settings, properties: store.properties });
+  } catch (error) {
+    console.error('Unable to load admin config:', error);
+    return res.status(500).json({ error: 'Unable to load admin configuration.' });
+  }
+});
+
 app.post('/api/admin/google-login', async (req, res) => {
   const { credential } = req.body;
-  const clientIp = getClientIp(req);
 
   if (!credential || typeof credential !== 'string') {
     return res.status(400).json({ error: 'Google credential is required.' });
@@ -451,7 +507,7 @@ app.post('/api/admin/google-login', async (req, res) => {
     return res.status(503).json({ error: 'Google Sign-In is not configured on the server.' });
   }
 
-  if (!recordRateLimit(clientIp, 5, 15 * 60 * 1000)) {
+  if (!recordRateLimit(getRateLimitKey(req, 'admin-google-login'), 5, 15 * 60 * 1000)) {
     return res.status(429).json({ error: 'Too many login attempts. Please try again later.' });
   }
 
@@ -505,13 +561,12 @@ app.post('/api/admin/google-login', async (req, res) => {
 
 app.post('/api/admin/login', async (req, res) => {
   const { password } = req.body;
-  const clientIp = getClientIp(req);
 
   if (!password || typeof password !== 'string') {
     return res.status(400).json({ error: 'Password is required.' });
   }
 
-  if (!recordRateLimit(clientIp, 5, 15 * 60 * 1000)) {
+  if (!recordRateLimit(getRateLimitKey(req, 'admin-login'), 5, 15 * 60 * 1000)) {
     return res.status(429).json({ error: 'Too many login attempts. Please try again later.' });
   }
 
@@ -721,7 +776,16 @@ app.post('/api/admin/upload-video', upload.single('video'), async (req, res) => 
     return res.status(400).json({ error: 'A video file is required.' });
   }
 
-  const extension = path.extname(req.file.originalname) || '.mp4';
+  const extensionByMime: Record<string, string> = {
+    'video/mp4': '.mp4',
+    'video/webm': '.webm',
+    'video/ogg': '.ogg',
+  };
+  const extension = extensionByMime[req.file.mimetype];
+  if (!extension) {
+    await fs.unlink(req.file.path).catch(() => {});
+    return res.status(400).json({ error: 'Unsupported video file type.' });
+  }
   const fileName = `${req.file.filename}${extension}`;
   const targetPath = path.join(UPLOADS_DIR, fileName);
 
@@ -772,7 +836,17 @@ app.post('/api/admin/upload-image', imageUpload.single('image'), async (req, res
     return res.status(400).json({ error: 'An image file is required.' });
   }
 
-  const extension = path.extname(req.file.originalname) || '.png';
+  const extensionByMime: Record<string, string> = {
+    'image/jpeg': '.jpg',
+    'image/png': '.png',
+    'image/webp': '.webp',
+    'image/gif': '.gif',
+  };
+  const extension = extensionByMime[req.file.mimetype];
+  if (!extension) {
+    await fs.unlink(req.file.path).catch(() => {});
+    return res.status(400).json({ error: 'Unsupported image file type.' });
+  }
   const fileName = `${req.file.filename}${extension}`;
   const targetPath = path.join(UPLOADS_DIR, fileName);
 
@@ -802,6 +876,10 @@ app.post('/api/chat', async (req, res) => {
     return res.status(400).json({ error: 'Message is required.' });
   }
 
+  if (!recordRateLimit(getRateLimitKey(req, 'chat'), 10, 10 * 60 * 1000)) {
+    return res.status(429).json({ error: 'Too many chat requests. Please try again later.' });
+  }
+
   try {
     const prompt = `You are a helpful real estate assistant for LPHASK Homes & Properties. Here is the current property inventory: ${JSON.stringify(properties || [])}. Answer the user in a concise and professional manner. User asked: ${sanitizeText(message)}`;
 
@@ -828,6 +906,10 @@ app.post('/api/contact', async (req, res) => {
     return res.status(400).json({ error: 'Please provide a valid name, email, and message.' });
   }
 
+  if (!recordRateLimit(getRateLimitKey(req, 'contact'), 5, 15 * 60 * 1000)) {
+    return res.status(429).json({ error: 'Too many contact submissions. Please try again later.' });
+  }
+
   const store = await readStore();
   store.contacts.push({
     id: `contact-${Date.now()}`,
@@ -852,6 +934,10 @@ app.post('/api/viewing-request', async (req, res) => {
     !isValidTextField(propertyId, 100)
   ) {
     return res.status(400).json({ error: 'Please provide valid viewing request details.' });
+  }
+
+  if (!recordRateLimit(getRateLimitKey(req, 'viewing-request'), 5, 15 * 60 * 1000)) {
+    return res.status(429).json({ error: 'Too many viewing requests. Please try again later.' });
   }
 
   const store = await readStore();
@@ -882,6 +968,10 @@ app.post('/api/info-request', async (req, res) => {
     return res.status(400).json({ error: 'Please provide valid info request details.' });
   }
 
+  if (!recordRateLimit(getRateLimitKey(req, 'info-request'), 5, 15 * 60 * 1000)) {
+    return res.status(429).json({ error: 'Too many info requests. Please try again later.' });
+  }
+
   const store = await readStore();
   store.infoRequests.push({
     id: `info-${Date.now()}`,
@@ -901,6 +991,10 @@ app.post('/api/testimonial', async (req, res) => {
   const { name, role, content } = req.body;
   if (!name || !content) {
     return res.status(400).json({ error: 'Name and content are required.' });
+  }
+
+  if (!recordRateLimit(getRateLimitKey(req, 'testimonial'), 3, 30 * 60 * 1000)) {
+    return res.status(429).json({ error: 'Too many testimonial submissions. Please try again later.' });
   }
 
   const store = await readStore();
