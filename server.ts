@@ -385,9 +385,20 @@ const geminiKey = process.env.GEMINI_API_KEY;
 const aiClient = geminiKey ? new GoogleGenAI({ apiKey: geminiKey }) : null;
 
 const validateAdminString = (value: unknown) => typeof value === 'string' && value.trim().length > 0;
-const validRentalUnitTypes = ['single-room', 'bedsitter', '1-bedroom', '2-bedroom', 'hostel'] as const;
-const isValidRentalUnitType = (value: unknown): value is typeof validRentalUnitTypes[number] =>
-  typeof value === 'string' && (validRentalUnitTypes as readonly string[]).includes(value);
+
+const sanitizeStringList = (value: unknown, maxLength = 80) => {
+  if (!Array.isArray(value)) return [];
+  const seen = new Set<string>();
+  const items: string[] = [];
+  for (const entry of value) {
+    if (typeof entry !== 'string') continue;
+    const cleaned = sanitizeText(entry, maxLength);
+    if (!cleaned || seen.has(cleaned.toLowerCase())) continue;
+    seen.add(cleaned.toLowerCase());
+    items.push(cleaned);
+  }
+  return items;
+};
 
 const sanitizeRentalPriceBands = (value: unknown) => {
   if (!Array.isArray(value)) return [];
@@ -396,15 +407,15 @@ const sanitizeRentalPriceBands = (value: unknown) => {
     .map((band, index) => {
       if (!band || typeof band !== 'object') return null;
       const candidate = band as Record<string, unknown>;
-      const unitType = isValidRentalUnitType(candidate.unitType)
-        ? candidate.unitType
-        : 'single-room';
+      const unitType = typeof candidate.unitType === 'string'
+        ? sanitizeText(candidate.unitType, 80)
+        : '';
 
       const sanitizedBand = {
         id: typeof candidate.id === 'string' ? sanitizeText(candidate.id, 120) : `band-${index + 1}`,
         label: typeof candidate.label === 'string' ? sanitizeText(candidate.label, 120) : '',
         location: typeof candidate.location === 'string' ? sanitizeText(candidate.location, 160) : 'all',
-        unitType,
+        unitType: unitType || 'Single Room',
         displayPrice: typeof candidate.displayPrice === 'string' ? sanitizeText(candidate.displayPrice, 120) : '',
         priceRange: typeof candidate.priceRange === 'string' ? sanitizeText(candidate.priceRange, 120) : '',
         tone: typeof candidate.tone === 'string' ? sanitizeText(candidate.tone, 120) : '',
@@ -436,6 +447,7 @@ const sanitizeSettings = (settings: any) => {
     'officeWorkingHours',
     'viewingFee',
     'adminEmail',
+    'rentalUnitFilters',
     'singleRoomPriceRange',
     'bedsitterPriceRange',
     'oneBedroomPriceRange',
@@ -469,6 +481,10 @@ const sanitizeSettings = (settings: any) => {
     if (key === 'rentalPriceBands') {
       const bands = sanitizeRentalPriceBands(value);
       validSettings[key] = bands as any;
+      continue;
+    }
+    if (key === 'rentalUnitFilters') {
+      validSettings[key] = sanitizeStringList(value, 80);
       continue;
     }
     if (typeof value === 'string') {

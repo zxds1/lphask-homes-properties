@@ -75,7 +75,7 @@ interface Property {
   status: 'Available' | 'Under Offer' | 'Sold' | 'Rented' | 'Unavailable';
 }
 
-type RentUnitFilter = 'all' | 'single-room' | 'bedsitter' | '1-bedroom' | '2-bedroom' | 'hostel';
+type RentUnitFilter = string;
 
 type HeroQuickPick = {
   label: string;
@@ -90,7 +90,7 @@ interface RentalPriceBand {
   id: string;
   label: string;
   location: string;
-  unitType: Exclude<RentUnitFilter, 'all'>;
+  unitType: string;
   displayPrice: string;
   priceRange: string;
   tone: string;
@@ -138,6 +138,7 @@ interface SiteConfig {
   footerBgImage?: string;
   viewingFee: string;
   adminEmail: string;
+  rentalUnitFilters: string[];
   singleRoomPriceRange: string;
   bedsitterPriceRange: string;
   oneBedroomPriceRange: string;
@@ -183,6 +184,15 @@ const INITIAL_CONFIG: SiteConfig = {
   contactAddress: "",
   officeWorkingHours: "",
   adminEmail: "",
+  rentalUnitFilters: [
+    "Single Room",
+    "Bedsitter",
+    "1B",
+    "2B",
+    "3B",
+    "Hostel",
+    "Commercial",
+  ],
   propertiesManaged: "500+",
   happyClients: "1.2k",
   yearsExperience: "15+",
@@ -532,30 +542,109 @@ const matchesPropertySearch = (property: Property, query: string) => {
   return searchableFields.some((field) => normalizeSearchValue(field).includes(normalizedQuery));
 };
 
-const getRentUnitType = (property: Property): RentUnitFilter => {
+const normalizeRentalUnitKey = (value: string) => normalizeSearchValue(value).replace(/[^a-z0-9]+/g, '');
+
+const UNIT_NUMBER_WORDS: Record<string, string> = {
+  "1": "one",
+  "2": "two",
+  "3": "three",
+  "4": "four",
+  "5": "five",
+  "6": "six",
+  "7": "seven",
+  "8": "eight",
+  "9": "nine",
+  "10": "ten",
+};
+
+const getRentalUnitTone = (unitType: string) => {
+  const key = normalizeRentalUnitKey(unitType);
+  if (!key) return 'from-slate-500/20 to-slate-700/30';
+  if (key.includes('single') || key.includes('studio')) return 'from-emerald-500/20 to-emerald-700/30';
+  if (key.includes('bedsitter')) return 'from-cyan-500/20 to-cyan-700/30';
+  if (key.includes('hostel')) return 'from-rose-500/20 to-rose-700/30';
+  if (key.includes('commercial')) return 'from-violet-500/20 to-violet-700/30';
+  if (key.includes('3b') || key.includes('3bed')) return 'from-fuchsia-500/20 to-fuchsia-700/30';
+  if (key.includes('2b') || key.includes('2bed')) return 'from-amber-500/20 to-amber-700/30';
+  if (key.includes('1b') || key.includes('1bed')) return 'from-sky-500/20 to-sky-700/30';
+  const tones = [
+    'from-emerald-500/20 to-emerald-700/30',
+    'from-cyan-500/20 to-cyan-700/30',
+    'from-sky-500/20 to-sky-700/30',
+    'from-amber-500/20 to-amber-700/30',
+    'from-fuchsia-500/20 to-fuchsia-700/30',
+    'from-rose-500/20 to-rose-700/30',
+    'from-violet-500/20 to-violet-700/30',
+  ];
+  const index = key.split('').reduce((sum, char) => sum + char.charCodeAt(0), 0) % tones.length;
+  return tones[index];
+};
+
+const buildRentUnitAliases = (unitType: string) => {
+  const normalized = normalizeSearchValue(unitType);
+  const compact = normalizeRentalUnitKey(unitType);
+  const aliases = new Set<string>([normalized, compact]);
+
+  if (!normalized || normalized === 'all') {
+    return [...aliases].filter(Boolean);
+  }
+
+  if (compact.includes('single') || compact.includes('studio')) {
+    ['single room', 'singleroom', 'studio', 'studio room', '1 room'].forEach((alias) => aliases.add(alias));
+  }
+
+  if (compact.includes('bedsitter')) {
+    ['bedsitter', 'bed sitter'].forEach((alias) => aliases.add(alias));
+  }
+
+  if (compact.includes('hostel')) {
+    ['hostel', 'dormitory'].forEach((alias) => aliases.add(alias));
+  }
+
+  if (compact.includes('commercial')) {
+    ['commercial', 'shop', 'retail'].forEach((alias) => aliases.add(alias));
+  }
+
+  const bedroomMatch = normalized.match(/(\d+)\s*(?:bedroom|bed|b)/) || compact.match(/(\d+)b/);
+  if (bedroomMatch) {
+    const count = bedroomMatch[1];
+    const word = UNIT_NUMBER_WORDS[count] || count;
+    [
+      `${count} bedroom`,
+      `${count}-bedroom`,
+      `${count}bedroom`,
+      `${count} b`,
+      `${count}b`,
+      `${word} bedroom`,
+    ].forEach((alias) => aliases.add(alias));
+  }
+
+  return [...aliases].filter(Boolean);
+};
+
+const matchesRentUnitFilter = (property: Property, unitType: RentUnitFilter) => {
+  if (!unitType || normalizeSearchValue(unitType) === 'all') return true;
+
   const fields = normalizeSearchValue([
     property.title,
     property.category,
     property.description,
     ...(property.tags ?? []),
   ].join(' '));
+  const compactFields = normalizeRentalUnitKey(fields);
+  const aliases = buildRentUnitAliases(unitType);
 
-  if (fields.includes('hostel')) return 'hostel';
-  if (fields.includes('single room') || fields.includes('singleroom') || fields.includes('studio')) return 'single-room';
-  if (fields.includes('bedsitter')) return 'bedsitter';
-  if (fields.includes('1-bedroom') || fields.includes('1 bedroom') || fields.includes('one bedroom') || fields.includes('1b') || property.bedrooms === 1) {
-    return '1-bedroom';
+  if (aliases.some((alias) => compactFields.includes(normalizeRentalUnitKey(alias)) || fields.includes(normalizeSearchValue(alias)))) {
+    return true;
   }
-  if (fields.includes('2-bedroom') || fields.includes('2 bedroom') || fields.includes('two bedroom') || fields.includes('2b') || property.bedrooms === 2) {
-    return '2-bedroom';
-  }
-  if (property.bedrooms === 0) return 'single-room';
-  return 'all';
-};
 
-const matchesRentUnitFilter = (property: Property, unitType: RentUnitFilter) => {
-  if (unitType === 'all') return true;
-  return getRentUnitType(property) === unitType;
+  if (property.bedrooms != null) {
+    const bedroomText = normalizeSearchValue(String(property.bedrooms));
+    if (aliases.some((alias) => normalizeSearchValue(alias).includes(bedroomText))) return true;
+    if (property.bedrooms === 0 && compactFields.includes('single')) return true;
+  }
+
+  return false;
 };
 
 const matchesPriceBand = (price: number, priceRange: string) => {
@@ -570,32 +659,16 @@ const matchesPriceBand = (price: number, priceRange: string) => {
   return true;
 };
 
-const RENTAL_UNIT_LABELS: Record<Exclude<RentUnitFilter, 'all'>, string> = {
-  'single-room': 'Single Room',
-  bedsitter: 'Bedsitter',
-  '1-bedroom': '1 Bedroom',
-  '2-bedroom': '2 Bedroom',
-  hostel: 'Hostel',
-};
-
-const RENTAL_UNIT_TONES: Record<Exclude<RentUnitFilter, 'all'>, string> = {
-  'single-room': 'from-emerald-500/20 to-emerald-700/30',
-  bedsitter: 'from-cyan-500/20 to-cyan-700/30',
-  '1-bedroom': 'from-sky-500/20 to-sky-700/30',
-  '2-bedroom': 'from-amber-500/20 to-amber-700/30',
-  hostel: 'from-rose-500/20 to-rose-700/30',
-};
-
 const createRentalPriceBand = (overrides: Partial<RentalPriceBand> = {}): RentalPriceBand => {
-  const unitType = overrides.unitType ?? 'single-room';
+  const unitType = overrides.unitType ?? 'Single Room';
   return {
     id: overrides.id ?? `band-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-    label: overrides.label ?? RENTAL_UNIT_LABELS[unitType] ?? 'Rental Band',
+    label: overrides.label ?? unitType ?? 'Rental Band',
     location: overrides.location ?? 'all',
     unitType,
     displayPrice: overrides.displayPrice ?? '',
     priceRange: overrides.priceRange ?? '',
-    tone: overrides.tone ?? RENTAL_UNIT_TONES[unitType] ?? 'from-slate-500/20 to-slate-700/30',
+    tone: overrides.tone ?? getRentalUnitTone(unitType) ?? 'from-slate-500/20 to-slate-700/30',
   };
 };
 
@@ -604,7 +677,7 @@ const getDefaultRentalBands = (config: SiteConfig): RentalPriceBand[] => [
     id: 'legacy-single-room',
     label: 'Single Rooms',
     location: 'all',
-    unitType: 'single-room',
+    unitType: 'Single Room',
     displayPrice: config.singleRoomPriceRange || 'Ksh 3k - 8k',
     priceRange: '0-8000',
   }),
@@ -612,7 +685,7 @@ const getDefaultRentalBands = (config: SiteConfig): RentalPriceBand[] => [
     id: 'legacy-bedsitter',
     label: 'Bedsitters',
     location: 'all',
-    unitType: 'bedsitter',
+    unitType: 'Bedsitter',
     displayPrice: config.bedsitterPriceRange || 'Ksh 6k - 12k',
     priceRange: '6000-12000',
   }),
@@ -620,7 +693,7 @@ const getDefaultRentalBands = (config: SiteConfig): RentalPriceBand[] => [
     id: 'legacy-1-bedroom',
     label: '1 Bedrooms',
     location: 'all',
-    unitType: '1-bedroom',
+    unitType: '1B',
     displayPrice: config.oneBedroomPriceRange || 'Ksh 10k - 20k',
     priceRange: '10000-20000',
   }),
@@ -628,7 +701,7 @@ const getDefaultRentalBands = (config: SiteConfig): RentalPriceBand[] => [
     id: 'legacy-2-bedroom',
     label: '2 Bedrooms',
     location: 'all',
-    unitType: '2-bedroom',
+    unitType: '2B',
     displayPrice: config.twoBedroomPriceRange || 'Ksh 18k - 35k',
     priceRange: '18000-35000',
   }),
@@ -636,7 +709,7 @@ const getDefaultRentalBands = (config: SiteConfig): RentalPriceBand[] => [
     id: 'legacy-hostel',
     label: 'Hostels',
     location: 'all',
-    unitType: 'hostel',
+    unitType: 'Hostel',
     displayPrice: config.hostelPriceRange || 'Ksh 2k - 6k',
     priceRange: '0-6000',
   }),
@@ -647,31 +720,31 @@ const getEffectiveRentalBands = (config: SiteConfig) => {
     .map((band) => createRentalPriceBand({
       ...band,
       location: band.location || 'all',
-      label: band.label || RENTAL_UNIT_LABELS[band.unitType] || 'Rental Band',
-      tone: band.tone || RENTAL_UNIT_TONES[band.unitType] || 'from-slate-500/20 to-slate-700/30',
+      label: band.label || band.unitType || 'Rental Band',
+      tone: band.tone || getRentalUnitTone(band.unitType) || 'from-slate-500/20 to-slate-700/30',
     }))
     .filter((band) => band.priceRange || band.displayPrice);
 
   return configuredBands.length > 0 ? configuredBands : getDefaultRentalBands(config);
 };
 
+const getEffectiveRentalUnitFilters = (config: SiteConfig) => {
+  const seen = new Set<string>();
+  const filters = (config.rentalUnitFilters ?? [])
+    .map((filter) => String(filter).trim())
+    .filter((filter) => filter.length > 0 && normalizeSearchValue(filter) !== 'all' && !seen.has(normalizeSearchValue(filter)))
+    .filter((filter) => {
+      const key = normalizeSearchValue(filter);
+      seen.add(key);
+      return true;
+    });
+  return filters.length > 0 ? filters : ['Single Room', 'Bedsitter', '1B', '2B', '3B', 'Hostel', 'Commercial'];
+};
+
 const matchesLocationFilter = (propertyLocation: string, location: string) => {
   if (location === 'all') return true;
   return normalizeSearchValue(propertyLocation).includes(normalizeSearchValue(location));
 };
-
-const UNIT_FILTER_OPTIONS: Array<{
-  label: string;
-  value: RentUnitFilter;
-  priceRange: string;
-}> = [
-  { label: 'All Units', value: 'all', priceRange: 'all' },
-  { label: 'Single Room', value: 'single-room', priceRange: '0-8000' },
-  { label: 'Bedsitter', value: 'bedsitter', priceRange: '6000-12000' },
-  { label: '1 Bedroom', value: '1-bedroom', priceRange: '10000-20000' },
-  { label: '2 Bedroom', value: '2-bedroom', priceRange: '18000-35000' },
-  { label: 'Hostel', value: 'hostel', priceRange: '0-6000' },
-];
 
 // --- SEO & Structured Data ---
 const SEOData = ({ config }: { config: SiteConfig }) => {
@@ -2057,9 +2130,14 @@ const Listings = ({
     }));
   }, [quickFilter, type]);
 
+  const rentalUnitFilterOptions = useMemo(() => {
+    const options = getEffectiveRentalUnitFilters(config).map((label) => ({ label, value: label }));
+    return [{ label: 'All Units', value: 'all' }, ...options];
+  }, [config]);
+
   const unitTypeStats = useMemo(() => {
     if (type !== 'rent') return [];
-    return UNIT_FILTER_OPTIONS.map((option) => ({
+    return rentalUnitFilterOptions.map((option) => ({
       ...option,
       count: option.value === 'all'
         ? properties.filter((property) => property.type === type).length
@@ -2068,9 +2146,9 @@ const Listings = ({
             matchesRentUnitFilter(property, option.value)
           ).length,
     }));
-  }, [properties, type]);
+  }, [properties, type, rentalUnitFilterOptions]);
 
-  const handleUnitTypeSelect = (option: typeof UNIT_FILTER_OPTIONS[number]) => {
+  const handleUnitTypeSelect = (option: (typeof rentalUnitFilterOptions)[number]) => {
     if (type !== 'rent') return;
     setFilters((prev) => ({
       ...prev,
@@ -3243,10 +3321,16 @@ const AdminPanel = ({
   }, [settingsDraft]);
 
   const rentalPriceBands = localSettings.rentalPriceBands ?? [];
+  const rentalUnitFilters = localSettings.rentalUnitFilters ?? [];
 
   const updateRentalPriceBands = (nextBands: RentalPriceBand[]) => {
     setLocalSettings({ ...localSettings, rentalPriceBands: nextBands });
     onSettingsChange({ rentalPriceBands: nextBands });
+  };
+
+  const updateRentalUnitFilters = (nextFilters: string[]) => {
+    setLocalSettings({ ...localSettings, rentalUnitFilters: nextFilters });
+    onSettingsChange({ rentalUnitFilters: nextFilters });
   };
 
   const updateRentalPriceBand = (bandId: string, updates: Partial<RentalPriceBand>) => {
@@ -3267,18 +3351,33 @@ const AdminPanel = ({
     ]);
   };
 
-  const addRentalPriceBandPreset = (unitType: Exclude<RentUnitFilter, 'all'>) => {
-    const existingCount = rentalPriceBands.filter((band) => band.unitType === unitType).length + 1;
+  const addRentalPriceBandPreset = (unitType: string) => {
+    const existingCount = rentalPriceBands.filter((band) => normalizeRentalUnitKey(band.unitType) === normalizeRentalUnitKey(unitType)).length + 1;
     updateRentalPriceBands([
       ...rentalPriceBands,
       createRentalPriceBand({
         unitType,
-        label: `${RENTAL_UNIT_LABELS[unitType]} ${existingCount}`,
+        label: `${unitType} ${existingCount}`,
         location: 'all',
         displayPrice: '',
         priceRange: '',
       }),
     ]);
+  };
+
+  const addRentalUnitFilter = () => {
+    updateRentalUnitFilters([...rentalUnitFilters, 'New Type']);
+  };
+
+  const updateRentalUnitFilter = (index: number, value: string) => {
+    const next = [...rentalUnitFilters];
+    next[index] = value;
+    updateRentalUnitFilters(next);
+  };
+
+  const removeRentalUnitFilter = (index: number) => {
+    const next = rentalUnitFilters.filter((_, currentIndex) => currentIndex !== index);
+    updateRentalUnitFilters(next.length > 0 ? next : ['Single Room', 'Bedsitter', '1B', '2B', '3B', 'Hostel', 'Commercial']);
   };
 
   const removeRentalPriceBand = (bandId: string) => {
@@ -3794,18 +3893,53 @@ const AdminPanel = ({
                 <div className="mt-4 p-6 rounded-3xl border border-slate-200 bg-slate-50">
                   <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between mb-4">
                     <div>
+                      <h4 className="text-lg font-bold text-slate-900">Rental Unit Filters</h4>
+                      <p className="text-sm text-slate-500">These labels control the rental chips below the search bar. Add or remove any unit type here.</p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={addRentalUnitFilter}
+                      className="inline-flex items-center gap-2 rounded-2xl bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white hover:bg-slate-800 transition-all"
+                    >
+                      <Plus size={16} />
+                      Add Filter
+                    </button>
+                  </div>
+                  <div className="space-y-3">
+                    {rentalUnitFilters.map((filterLabel, index) => (
+                      <div key={`${filterLabel}-${index}`} className="grid grid-cols-1 md:grid-cols-[1fr_auto] gap-3 items-center rounded-2xl border border-slate-200 bg-white p-3">
+                        <input
+                          value={filterLabel}
+                          onChange={(e) => updateRentalUnitFilter(index, e.target.value)}
+                          placeholder="Single Room / 1B / Commercial / 3B"
+                          className="w-full rounded-xl border border-slate-200 px-4 py-3"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => removeRentalUnitFilter(index)}
+                          className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-700 hover:bg-rose-100 transition-all"
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                <div className="mt-4 p-6 rounded-3xl border border-slate-200 bg-slate-50">
+                  <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between mb-4">
+                    <div>
                       <h4 className="text-lg font-bold text-slate-900">Rental Price Bands</h4>
                       <p className="text-sm text-slate-500">Add more than one band for the same unit type when prices change by location.</p>
                     </div>
                     <div className="flex flex-wrap gap-2">
-                      {(['single-room', 'bedsitter', '1-bedroom', '2-bedroom', 'hostel'] as Array<Exclude<RentUnitFilter, 'all'>>).map((unitType) => (
+                      {rentalUnitFilters.map((unitType) => (
                         <button
                           key={unitType}
                           type="button"
                           onClick={() => addRentalPriceBandPreset(unitType)}
                           className="rounded-full border border-emerald-200 bg-white px-4 py-2 text-xs font-bold uppercase tracking-widest text-slate-700 hover:border-emerald-400 hover:text-emerald-700 transition-all"
                         >
-                          Add {RENTAL_UNIT_LABELS[unitType]}
+                          Add {unitType}
                         </button>
                       ))}
                       <button
@@ -3862,17 +3996,12 @@ const AdminPanel = ({
                           </div>
                           <div>
                             <label className="block text-sm font-semibold text-slate-600 mb-2">Unit Type</label>
-                            <select
+                            <input
                               value={band.unitType}
-                              onChange={(e) => updateRentalPriceBand(band.id, { unitType: e.target.value as Exclude<RentUnitFilter, 'all'> })}
+                              onChange={(e) => updateRentalPriceBand(band.id, { unitType: e.target.value })}
+                              placeholder="Single Room / 1B / Commercial / 3B"
                               className="w-full rounded-2xl border border-slate-200 px-4 py-3 bg-white"
-                            >
-                              <option value="single-room">Single Room</option>
-                              <option value="bedsitter">Bedsitter</option>
-                              <option value="1-bedroom">1 Bedroom</option>
-                              <option value="2-bedroom">2 Bedroom</option>
-                              <option value="hostel">Hostel</option>
-                            </select>
+                            />
                           </div>
                           <div>
                             <label className="block text-sm font-semibold text-slate-600 mb-2">Price Range</label>
