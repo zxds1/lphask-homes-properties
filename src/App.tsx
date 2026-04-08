@@ -921,10 +921,10 @@ const Hero = ({ onSearch, onQuickPick, properties, config }: { onSearch: (val: s
         <img
           src={config.heroBgImage}
           alt="Hero Background"
-          className="w-full h-full object-cover"
+          className="w-full h-full object-cover blur-[2px] scale-105"
           referrerPolicy="no-referrer"
         />
-        <div className="absolute inset-0 bg-gradient-to-r from-slate-950/92 via-slate-900/75 to-slate-900/45"></div>
+        <div className="absolute inset-0 bg-gradient-to-r from-slate-950/88 via-slate-900/72 to-slate-900/50"></div>
         <div className="animated-bg-overlay"></div>
       </div>
 
@@ -1046,7 +1046,7 @@ const Hero = ({ onSearch, onQuickPick, properties, config }: { onSearch: (val: s
 
               <div className="border-t border-white/10 p-5 lg:p-6 space-y-5">
                 <form onSubmit={handleSearch} className="flex flex-col sm:flex-row gap-2">
-                  <div className="flex-1 flex items-center px-4 py-3 bg-white/95 backdrop-blur-sm rounded-2xl">
+                <div className="flex-1 flex items-center px-4 py-3 bg-white/88 backdrop-blur-sm rounded-2xl border border-slate-200/70">
                     <Search className="text-slate-400 mr-2" size={20} />
                     <input
                       type="text"
@@ -1072,7 +1072,7 @@ const Hero = ({ onSearch, onQuickPick, properties, config }: { onSearch: (val: s
                       initial={{ opacity: 0, y: -10 }}
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0, y: -10 }}
-                      className="bg-white rounded-2xl shadow-2xl overflow-hidden border border-slate-100"
+                      className="bg-white/95 backdrop-blur-xl rounded-2xl shadow-2xl overflow-hidden border border-slate-100"
                     >
                       {suggestions.map((suggestion, idx) => (
                         <button
@@ -1089,22 +1089,22 @@ const Hero = ({ onSearch, onQuickPick, properties, config }: { onSearch: (val: s
                 </AnimatePresence>
 
                 <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-                  <div className="rounded-[1.5rem] bg-white/10 border border-white/10 p-4 text-white">
+                    <div className="rounded-[1.5rem] bg-white/12 backdrop-blur-sm border border-white/10 p-4 text-white">
                     <div className="text-xs uppercase tracking-[0.3em] text-white/45 mb-2">Properties</div>
                     <div className="text-2xl font-black">{config.propertiesManaged || '500+'}</div>
                     <div className="text-[11px] text-white/55 mt-1">Managed</div>
                   </div>
-                  <div className="rounded-[1.5rem] bg-white/10 border border-white/10 p-4 text-white">
+                    <div className="rounded-[1.5rem] bg-white/12 backdrop-blur-sm border border-white/10 p-4 text-white">
                     <div className="text-xs uppercase tracking-[0.3em] text-white/45 mb-2">Clients</div>
                     <div className="text-2xl font-black">{config.happyClients || '1.2k'}</div>
                     <div className="text-[11px] text-white/55 mt-1">Satisfied</div>
                   </div>
-                  <div className="rounded-[1.5rem] bg-white/10 border border-white/10 p-4 text-white">
+                    <div className="rounded-[1.5rem] bg-white/12 backdrop-blur-sm border border-white/10 p-4 text-white">
                     <div className="text-xs uppercase tracking-[0.3em] text-white/45 mb-2">Experience</div>
                     <div className="text-2xl font-black">{config.yearsExperience || '15+'}</div>
                     <div className="text-[11px] text-white/55 mt-1">Years</div>
                   </div>
-                  <div className="rounded-[1.5rem] bg-white/10 border border-white/10 p-4 text-white">
+                    <div className="rounded-[1.5rem] bg-white/12 backdrop-blur-sm border border-white/10 p-4 text-white">
                     <div className="text-xs uppercase tracking-[0.3em] text-white/45 mb-2">Security</div>
                     <div className="text-2xl font-black">{config.secureTransactions || '100%'}</div>
                     <div className="text-[11px] text-white/55 mt-1">Trusted</div>
@@ -1129,10 +1129,10 @@ const Services = ({ onSelectService, config }: { onSelectService: (service: stri
         <img 
           src={config.servicesBgImage || "https://images.unsplash.com/photo-1560518883-ce09059eeffa?w=1920&q=80"} 
           alt="Services Background" 
-          className="w-full h-full object-cover"
+          className="w-full h-full object-cover blur-[2px] scale-105"
           referrerPolicy="no-referrer"
         />
-        <div className="absolute inset-0 bg-white/10"></div>
+        <div className="absolute inset-0 bg-slate-50/18"></div>
         <div className="animated-bg-overlay"></div>
       </div>
       
@@ -1147,7 +1147,7 @@ const Services = ({ onSelectService, config }: { onSelectService: (service: stri
             <motion.div 
               key={idx}
               whileHover={{ y: -10 }}
-              className="bg-white p-8 rounded-3xl shadow-sm border border-slate-100 hover:shadow-xl transition-all flex flex-col"
+              className="bg-white/90 backdrop-blur-xl p-8 rounded-3xl shadow-sm border border-slate-100 hover:shadow-xl transition-all flex flex-col"
             >
               <div className={`w-16 h-16 ${service.color} rounded-2xl flex items-center justify-center mb-6`}>
                 <IconRenderer name={service.icon} className={service.color.replace('bg-', 'text-').replace('-50', '-600')} size={32} />
@@ -2163,15 +2163,15 @@ const Listings = ({
         <img 
           src={type === 'rent' ? config.rentalsBgImage || "https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?w=1920&q=80" : config.salesBgImage || "https://images.unsplash.com/photo-1564013799919-ab600027ffc6?w=1920&q=80"} 
           alt={`${type === 'rent' ? 'Rentals' : 'Sales'} Background`} 
-          className="w-full h-full object-cover"
+          className="w-full h-full object-cover blur-[2px] scale-105"
           referrerPolicy="no-referrer"
         />
-        <div className={`absolute inset-0 ${type === 'sale' ? 'bg-slate-50/10' : 'bg-white/10'}`}></div>
+        <div className={`absolute inset-0 ${type === 'sale' ? 'bg-slate-50/18' : 'bg-white/16'}`}></div>
         <div className="animated-bg-overlay"></div>
       </div>
       
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
-        <div className="mb-12 rounded-[2rem] border border-white/20 bg-white/85 backdrop-blur-xl shadow-2xl shadow-slate-200/20 px-5 py-5">
+        <div className="mb-12 rounded-[2rem] border border-white/20 bg-white/78 backdrop-blur-xl shadow-2xl shadow-slate-200/20 px-5 py-5">
           <div className="flex flex-col xl:flex-row justify-between items-start xl:items-end gap-8">
             <div>
               <h2 className={`font-bold tracking-widest uppercase text-sm mb-4 ${type === 'rent' ? 'text-emerald-700' : 'text-red-700'}`}>
@@ -2184,7 +2184,7 @@ const Listings = ({
           
             {/* Filters */}
             <div className="flex flex-wrap gap-3">
-              <div className="flex items-center bg-slate-100 rounded-xl px-3 py-2">
+              <div className="flex items-center bg-white/80 rounded-xl px-3 py-2 border border-slate-200/70 backdrop-blur-sm">
                 <Navigation size={16} className="text-slate-500 mr-2" />
                 <select 
                   className="bg-transparent text-sm font-semibold focus:outline-none"
@@ -2198,7 +2198,7 @@ const Listings = ({
                 </select>
               </div>
 
-            <div className="flex items-center bg-slate-100 rounded-xl px-3 py-2">
+            <div className="flex items-center bg-white/80 rounded-xl px-3 py-2 border border-slate-200/70 backdrop-blur-sm">
               <Filter size={16} className="text-slate-500 mr-2" />
               <select 
                 className="bg-transparent text-sm font-semibold focus:outline-none"
@@ -2223,7 +2223,7 @@ const Listings = ({
             </div>
 
             {type === 'rent' && (
-              <div className="flex items-center bg-slate-100 rounded-xl px-3 py-2">
+              <div className="flex items-center bg-white/80 rounded-xl px-3 py-2 border border-slate-200/70 backdrop-blur-sm">
                 <Layers size={16} className="text-slate-500 mr-2" />
                 <select 
                   className="bg-transparent text-sm font-semibold focus:outline-none"
@@ -2240,7 +2240,7 @@ const Listings = ({
             )}
 
             {type === 'rent' && (
-              <div className="flex items-center bg-slate-100 rounded-xl px-3 py-2">
+              <div className="flex items-center bg-white/80 rounded-xl px-3 py-2 border border-slate-200/70 backdrop-blur-sm">
                 <Bed size={16} className="text-slate-500 mr-2" />
                 <select 
                   className="bg-transparent text-sm font-semibold focus:outline-none"
@@ -2273,7 +2273,7 @@ const Listings = ({
               </div>
             )}
 
-            <div className="flex items-center bg-slate-100 rounded-xl px-3 py-2">
+            <div className="flex items-center bg-white/80 rounded-xl px-3 py-2 border border-slate-200/70 backdrop-blur-sm">
               <MapPin size={16} className="text-slate-500 mr-2" />
               <select 
                 className="bg-transparent text-sm font-semibold focus:outline-none"
@@ -2285,7 +2285,7 @@ const Listings = ({
               </select>
             </div>
 
-            <div className="flex items-center bg-slate-100 rounded-xl px-3 py-2">
+            <div className="flex items-center bg-white/80 rounded-xl px-3 py-2 border border-slate-200/70 backdrop-blur-sm">
               <CheckCircle2 size={16} className="text-slate-500 mr-2" />
               <select 
                 className="bg-transparent text-sm font-semibold focus:outline-none"
@@ -2302,11 +2302,11 @@ const Listings = ({
             </div>
 
             <div className="relative group">
-              <div className="flex items-center bg-slate-100 rounded-xl px-3 py-2 cursor-pointer">
+              <div className="flex items-center bg-white/80 rounded-xl px-3 py-2 cursor-pointer border border-slate-200/70 backdrop-blur-sm">
                 <CheckCircle2 size={16} className="text-slate-500 mr-2" />
                 <span className="text-sm font-semibold">Amenities {filters.amenities.length > 0 && `(${filters.amenities.length})`}</span>
               </div>
-              <div className="absolute top-full right-0 mt-2 bg-white rounded-2xl shadow-2xl border border-slate-100 p-4 z-50 min-w-[200px] opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all">
+              <div className="absolute top-full right-0 mt-2 bg-white/92 backdrop-blur-xl rounded-2xl shadow-2xl border border-slate-100 p-4 z-50 min-w-[200px] opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all">
                 <div className="space-y-2 max-h-60 overflow-y-auto pr-2 scrollbar-hide">
                   {allAmenities.map(amenity => (
                     <label key={amenity} className="flex items-center gap-3 cursor-pointer hover:bg-slate-50 p-1 rounded-lg transition-colors">
@@ -2340,7 +2340,7 @@ const Listings = ({
         </div>
 
         {type === 'rent' && (
-          <div className="mt-6 rounded-[2rem] border border-emerald-100 bg-white/85 backdrop-blur-xl p-4 shadow-xl shadow-emerald-950/5">
+          <div className="mt-6 rounded-[2rem] border border-emerald-100 bg-white/78 backdrop-blur-xl p-4 shadow-xl shadow-emerald-950/5">
             <button
               type="button"
               onClick={() => setShowUnitTypes((prev) => !prev)}
@@ -2570,10 +2570,10 @@ const Office = ({ config }: { config: SiteConfig }) => {
         <img 
           src={config.officeBgImage || "https://images.unsplash.com/photo-1497366216548-37526070297c?w=1920&q=80"} 
           alt="Office Background" 
-          className="w-full h-full object-cover"
+          className="w-full h-full object-cover blur-[2px] scale-105"
           referrerPolicy="no-referrer"
         />
-        <div className="absolute inset-0 bg-white/10"></div>
+        <div className="absolute inset-0 bg-white/16"></div>
         <div className="animated-bg-overlay"></div>
       </div>
       
@@ -2731,10 +2731,10 @@ const Contact = ({ initialService, config }: { initialService?: string, config: 
         <img 
           src={config.contactBgImage || "https://images.unsplash.com/photo-1423666639041-f56000c27a9a?w=1920&q=80"} 
           alt="Contact Background" 
-          className="w-full h-full object-cover"
+          className="w-full h-full object-cover blur-[2px] scale-105"
           referrerPolicy="no-referrer"
         />
-        <div className="absolute inset-0 bg-emerald-900/10"></div>
+        <div className="absolute inset-0 bg-emerald-900/18"></div>
         <div className="animated-bg-overlay"></div>
       </div>
       
@@ -2781,7 +2781,7 @@ const Contact = ({ initialService, config }: { initialService?: string, config: 
               </div>
             </div>
 
-            <div className="bg-white/5 border border-white/10 p-6 rounded-2xl">
+            <div className="bg-white/10 backdrop-blur-sm border border-white/10 p-6 rounded-2xl">
               <div className="flex items-center text-emerald-400 font-bold mb-2">
                 <CheckCircle2 size={20} className="mr-2" /> Viewing Fee: {config.viewingFee}
               </div>
@@ -2791,7 +2791,7 @@ const Contact = ({ initialService, config }: { initialService?: string, config: 
             </div>
           </div>
 
-          <div className="bg-white rounded-3xl p-8 md:p-10 shadow-2xl">
+          <div className="bg-white/92 backdrop-blur-xl rounded-3xl p-8 md:p-10 shadow-2xl border border-slate-100">
             <h4 className="text-2xl font-bold text-slate-900 mb-6">Send a Message</h4>
             {isSuccess ? (
               <motion.div 
@@ -2876,10 +2876,10 @@ const Footer = ({ config }: { config: SiteConfig }) => {
         <img 
           src={config.footerBgImage || "https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?w=1920&q=80"} 
           alt="Footer Background" 
-          className="w-full h-full object-cover"
+          className="w-full h-full object-cover blur-[2px] scale-105"
           referrerPolicy="no-referrer"
         />
-        <div className="absolute inset-0 bg-slate-950/10"></div>
+        <div className="absolute inset-0 bg-slate-950/22"></div>
         <div className="animated-bg-overlay"></div>
       </div>
       
@@ -4554,7 +4554,7 @@ const Testimonials = ({ config }: { config: SiteConfig }) => {
           className="w-full h-full object-cover"
           referrerPolicy="no-referrer"
         />
-        <div className="absolute inset-0 bg-slate-50/10"></div>
+        <div className="absolute inset-0 bg-slate-50/18"></div>
         <div className="animated-bg-overlay"></div>
       </div>
       
@@ -4571,7 +4571,7 @@ const Testimonials = ({ config }: { config: SiteConfig }) => {
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
-              className="bg-white p-8 rounded-[2.5rem] shadow-xl shadow-slate-200/50 relative"
+              className="bg-white/88 backdrop-blur-xl p-8 rounded-[2.5rem] shadow-xl shadow-slate-200/50 relative border border-slate-100"
             >
               <div className="flex items-center gap-4 mb-6">
                 <img src={t.photo} alt={t.name} className="w-14 h-14 rounded-full object-cover border-2 border-emerald-100" />
@@ -4591,7 +4591,7 @@ const Testimonials = ({ config }: { config: SiteConfig }) => {
         </div>
 
         {/* Leave Testimonial Bar */}
-        <div className="bg-emerald-900 rounded-[3rem] p-8 md:p-12 text-white relative overflow-hidden">
+        <div className="bg-emerald-900/92 rounded-[3rem] p-8 md:p-12 text-white relative overflow-hidden border border-white/10">
           <div className="absolute top-0 right-0 w-64 h-64 bg-emerald-800 rounded-full -translate-y-1/2 translate-x-1/2 blur-3xl opacity-50"></div>
           <div className="relative z-10 flex flex-col lg:flex-row items-center justify-between gap-12">
             <div className="max-w-md">
