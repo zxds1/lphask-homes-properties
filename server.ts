@@ -142,6 +142,16 @@ const uploadFileToStorage = async (file: Express.Multer.File, prefix: string, ex
   });
   return url;
 };
+
+const getRequestBaseUrl = (req: Request) => {
+  const forwardedProto = req.headers['x-forwarded-proto'];
+  const proto = typeof forwardedProto === 'string' && forwardedProto.length > 0
+    ? forwardedProto.split(',')[0].trim()
+    : req.protocol;
+  const host = req.get('host');
+  if (!host) return '';
+  return `${proto}://${host}`;
+};
 app.use(
   cors({
     origin: (origin, callback) => {
@@ -940,7 +950,8 @@ app.post('/api/admin/upload-video', upload.single('video'), async (req, res) => 
       return res.status(500).json({ error: 'Failed to store uploaded video.' });
     }
 
-    videoUrl = `/uploads/${fileName}`;
+    const baseUrl = getRequestBaseUrl(req);
+    videoUrl = baseUrl ? `${baseUrl}/uploads/${fileName}` : `/uploads/${fileName}`;
   } else {
     await fs.unlink(req.file.path).catch(() => {});
   }
@@ -1017,7 +1028,8 @@ app.post('/api/admin/upload-image', imageUpload.single('image'), async (req, res
       return res.status(500).json({ error: 'Failed to store uploaded image.' });
     }
 
-    imageUrl = `/uploads/${fileName}`;
+    const baseUrl = getRequestBaseUrl(req);
+    imageUrl = baseUrl ? `${baseUrl}/uploads/${fileName}` : `/uploads/${fileName}`;
   } else {
     await fs.unlink(req.file.path).catch(() => {});
   }
@@ -1076,7 +1088,8 @@ app.post('/api/admin/upload-property-image', imageUpload.single('image'), async 
       return res.status(500).json({ error: 'Failed to store uploaded property image.' });
     }
 
-    imageUrl = `/uploads/${fileName}`;
+    const baseUrl = getRequestBaseUrl(req);
+    imageUrl = baseUrl ? `${baseUrl}/uploads/${fileName}` : `/uploads/${fileName}`;
   } else {
     await fs.unlink(req.file.path).catch(() => {});
   }

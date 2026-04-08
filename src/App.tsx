@@ -166,6 +166,9 @@ interface SiteConfig {
 }
 
 // --- Data ---
+const DEFAULT_HERO_BACKGROUND =
+  'https://images.unsplash.com/photo-1505693416388-ac5ce068fe85?auto=format&fit=crop&w=1920&q=80';
+
 const INITIAL_CONFIG: SiteConfig = {
   siteName: "LPHASK Homes",
   siteNameSecondary: "& Properties",
@@ -203,7 +206,7 @@ const INITIAL_CONFIG: SiteConfig = {
     twitter: ""
   },
   siteDescription: "",
-  heroBgImage: "",
+  heroBgImage: DEFAULT_HERO_BACKGROUND,
   servicesBgImage: "",
   officeBgImage: "",
   testimonialsBgImage: "",
@@ -992,10 +995,12 @@ const Hero = ({ onSearch, onQuickPick, properties, config }: { onSearch: (val: s
       {/* Background Image with Overlay */}
       <div className="absolute inset-0 z-0">
         <img
-          src={config.heroBgImage}
+          src={config.heroBgImage || DEFAULT_HERO_BACKGROUND}
           alt="Hero Background"
           className="w-full h-full object-cover blur-[2px] scale-105"
           referrerPolicy="no-referrer"
+          loading="eager"
+          fetchPriority="high"
         />
         <div className="absolute inset-0 bg-gradient-to-r from-slate-950/88 via-slate-900/72 to-slate-900/50"></div>
         <div className="animated-bg-overlay"></div>
