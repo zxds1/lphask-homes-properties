@@ -1542,6 +1542,18 @@ const getGoogleMapsSearchUrl = (location: string) => {
   return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(location)}`;
 };
 
+const getGoogleMapsEmbedUrl = (property: Property) => {
+  const hasCoordinates =
+    typeof property.lat === "number" && !Number.isNaN(property.lat) &&
+    typeof property.lng === "number" && !Number.isNaN(property.lng);
+
+  if (hasCoordinates) {
+    return `https://www.google.com/maps?q=${property.lat},${property.lng}&z=15&output=embed`;
+  }
+
+  return `https://www.google.com/maps?q=${encodeURIComponent(property.location)}&z=15&output=embed`;
+};
+
 const PropertyDetail = ({ property, onClose, onRequestViewing, onRequestInfo }: { 
   property: Property, 
   onClose: () => void, 
@@ -1550,6 +1562,9 @@ const PropertyDetail = ({ property, onClose, onRequestViewing, onRequestInfo }: 
 }) => {
   const [activeImg, setActiveImg] = useState(0);
   const allImages = [property.img, ...(property.images || [])];
+  const hasCoordinates =
+    typeof property.lat === "number" && !Number.isNaN(property.lat) &&
+    typeof property.lng === "number" && !Number.isNaN(property.lng);
 
   return (
     <motion.div 
@@ -1777,44 +1792,94 @@ const PropertyDetail = ({ property, onClose, onRequestViewing, onRequestInfo }: 
             Location Map & Directions
           </h3>
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            <a 
-              href={getGoogleMapsSearchUrl(property.location)}
-              target="_blank" 
-              rel="noopener noreferrer"
-              className="lg:col-span-2 h-96 bg-white/5 rounded-[3rem] border border-white/10 relative overflow-hidden group block"
-            >
-              <div className="absolute inset-0 bg-slate-950/80 flex flex-col items-center justify-center gap-4 p-6 text-center">
-                <div className="rounded-full bg-white/10 p-4 text-emerald-300">
-                  <MapPin size={32} aria-hidden="true" />
+            <div className="lg:col-span-2 space-y-4">
+              <div className="relative h-96 rounded-[3rem] overflow-hidden border border-white/10 shadow-2xl bg-slate-900">
+                <iframe
+                  src={getGoogleMapsEmbedUrl(property)}
+                  width="100%"
+                  height="100%"
+                  style={{ border: 0 }}
+                  allowFullScreen
+                  loading="lazy"
+                  referrerPolicy="no-referrer-when-downgrade"
+                  title={`Map for ${property.title}`}
+                  className="w-full h-full"
+                />
+                <div className="absolute left-6 top-6 flex items-center gap-2 rounded-full border border-white/15 bg-slate-950/80 px-4 py-2 text-xs font-bold uppercase tracking-[0.25em] text-white shadow-2xl backdrop-blur-md">
+                  <MapPin size={14} className="text-emerald-400" />
+                  Live map pin
                 </div>
+                <div className="absolute bottom-6 left-6 right-6 flex flex-wrap gap-3">
+                  <span className="rounded-full border border-white/15 bg-white/10 px-4 py-2 text-[10px] font-bold uppercase tracking-[0.3em] text-white backdrop-blur-md">
+                    {property.location}
+                  </span>
+                  {hasCoordinates && (
+                    <span className="rounded-full border border-white/15 bg-white/10 px-4 py-2 text-[10px] font-bold uppercase tracking-[0.3em] text-white backdrop-blur-md">
+                      {property.lat?.toFixed(4)}, {property.lng?.toFixed(4)}
+                    </span>
+                  )}
+                </div>
+              </div>
+              <div className="rounded-[2rem] border border-white/10 bg-white/5 p-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div>
-                  <p className="text-white text-lg font-bold">View Property Location</p>
-                  <p className="text-slate-300 text-sm mt-2">Open directions in Google Maps for the most reliable route.</p>
+                  <p className="text-white font-bold">How to get there?</p>
+                  <p className="text-white/60 text-sm">
+                    This property is located in {property.location}. Open Google Maps for live directions and route planning.
+                  </p>
                 </div>
-              </div>
-              <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_rgba(255,255,255,0.15),_transparent_45%)] pointer-events-none" />
-              <div className="absolute inset-0 bg-gradient-to-t from-slate-900/40 via-transparent to-transparent" />
-              <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                <div className="bg-white text-slate-900 px-6 py-3 rounded-2xl font-bold flex items-center gap-2 shadow-2xl">
+                <a 
+                  href={getGoogleMapsSearchUrl(property.location)}
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center justify-center gap-2 bg-white text-slate-900 px-6 py-3 rounded-2xl font-bold hover:bg-emerald-500 hover:text-white transition-all"
+                >
                   <Navigation size={20} />
-                  Get Directions
+                  Open in Google Maps
+                </a>
+              </div>
+            </div>
+            <div className="bg-white/5 p-8 rounded-[3rem] border border-white/10 flex flex-col justify-between gap-8">
+              <div>
+                <p className="text-xs font-bold uppercase tracking-[0.3em] text-emerald-400 mb-4">Route summary</p>
+                <h4 className="text-2xl font-bold mb-4">Pinned Location</h4>
+                <p className="text-white/60 leading-relaxed">
+                  This section uses live Google Maps data. The embed follows the property coordinates when they exist, and otherwise follows the property location in Google Maps.
+                </p>
+              </div>
+
+              <div className="space-y-3">
+                <div className="rounded-2xl border border-white/10 bg-white/5 p-4 flex items-start gap-3">
+                  <div className="mt-1 rounded-full bg-emerald-500/15 p-2 text-emerald-400">
+                    <MapPin size={16} />
+                  </div>
+                  <div>
+                    <p className="text-xs font-bold uppercase tracking-[0.25em] text-white/40 mb-1">Property pin</p>
+                    <p className="text-white font-medium">{property.location}</p>
+                  </div>
+                </div>
+
+                <div className="rounded-2xl border border-white/10 bg-white/5 p-4 flex items-start gap-3">
+                  <div className="mt-1 rounded-full bg-white/10 p-2 text-white">
+                    <Navigation size={16} />
+                  </div>
+                  <div>
+                    <p className="text-xs font-bold uppercase tracking-[0.25em] text-white/40 mb-1">Route action</p>
+                    <p className="text-white font-medium">Open live navigation in Google Maps</p>
+                  </div>
+                </div>
+
+                <div className="rounded-2xl border border-white/10 bg-white/5 p-4 flex items-start gap-3">
+                  <div className="mt-1 rounded-full bg-white/10 p-2 text-white">
+                    <MapPin size={16} />
+                  </div>
+                  <div>
+                    <p className="text-xs font-bold uppercase tracking-[0.25em] text-white/40 mb-1">Embed source</p>
+                    <p className="text-white font-medium">
+                      {hasCoordinates ? "Latitude / Longitude pin" : "Location search fallback"}
+                    </p>
+                  </div>
                 </div>
               </div>
-            </a>
-            <div className="bg-white/5 p-8 rounded-[3rem] border border-white/10 flex flex-col justify-center">
-              <h4 className="text-xl font-bold mb-4">How to get there?</h4>
-              <p className="text-white/60 mb-8">
-                This property is located in {property.location}. Use the button below to get real-time directions from your current location.
-              </p>
-              <a 
-                href={getGoogleMapsSearchUrl(property.location)}
-                target="_blank" 
-                rel="noopener noreferrer"
-                className="flex items-center justify-center gap-2 bg-white text-slate-900 py-4 rounded-2xl font-bold hover:bg-emerald-500 hover:text-white transition-all"
-              >
-                <Navigation size={20} />
-                Get Directions
-              </a>
             </div>
           </div>
         </div>

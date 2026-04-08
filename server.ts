@@ -22,6 +22,7 @@ const CORS_ORIGIN = process.env.CORS_ORIGIN;
 const FIREBASE_PROJECT_ID = process.env.FIREBASE_PROJECT_ID;
 const FIREBASE_CLIENT_EMAIL = process.env.FIREBASE_CLIENT_EMAIL;
 const FIREBASE_PRIVATE_KEY = process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n');
+const FIREBASE_STORAGE_BUCKET = process.env.FIREBASE_STORAGE_BUCKET || (FIREBASE_PROJECT_ID ? `${FIREBASE_PROJECT_ID}.appspot.com` : '');
 const FIREBASE_COLLECTION = process.env.FIREBASE_COLLECTION || 'appStore';
 const FIREBASE_DOC_ID = process.env.FIREBASE_DOC_ID || 'default';
 const EMAIL_SERVICE = process.env.EMAIL_SERVICE;
@@ -77,10 +78,14 @@ const googleClient = GOOGLE_CLIENT_ID ? new OAuth2Client(GOOGLE_CLIENT_ID) : nul
 
 let firestore: admin.firestore.Firestore | null = null;
 let storeDocRef: admin.firestore.DocumentReference | null = null;
+let storageBucket: any = null;
 
 if (admin.apps.length > 0) {
   firestore = admin.firestore();
   storeDocRef = firestore.collection(FIREBASE_COLLECTION).doc(FIREBASE_DOC_ID);
+  if (FIREBASE_STORAGE_BUCKET) {
+    storageBucket = admin.storage().bucket(FIREBASE_STORAGE_BUCKET);
+  }
 }
 
 const allowedOrigins = CORS_ORIGIN.split(',').map((origin) => origin.trim()).filter(Boolean);
@@ -119,6 +124,24 @@ const imageUpload = multer({
     cb(null, allowed.includes(file.mimetype));
   },
 });
+
+const uploadFileToStorage = async (file: Express.Multer.File, prefix: string, extension: string) => {
+  if (!storageBucket) return null;
+  const fileName = `${prefix}-${Date.now()}-${crypto.randomBytes(8).toString('hex')}${extension}`;
+  const bucketFile = storageBucket.file(fileName);
+  await bucketFile.save(file.buffer, {
+    metadata: {
+      contentType: file.mimetype,
+      cacheControl: 'public, max-age=31536000, immutable',
+    },
+    resumable: false,
+  });
+  const [url] = await bucketFile.getSignedUrl({
+    action: 'read',
+    expires: '2500-01-01',
+  });
+  return url;
+};
 app.use(
   cors({
     origin: (origin, callback) => {
@@ -887,18 +910,25 @@ app.post('/api/admin/upload-video', upload.single('video'), async (req, res) => 
     await fs.unlink(req.file.path).catch(() => {});
     return res.status(400).json({ error: 'Unsupported video file type.' });
   }
-  const fileName = `${req.file.filename}${extension}`;
-  const targetPath = path.join(UPLOADS_DIR, fileName);
+  let videoUrl = await uploadFileToStorage(req.file, 'video', extension);
 
-  try {
-    await fs.rename(req.file.path, targetPath);
-  } catch (error) {
-    console.error('Unable to store uploaded video:', error);
+  if (!videoUrl) {
+    const fileName = `${req.file.filename}${extension}`;
+    const targetPath = path.join(UPLOADS_DIR, fileName);
+
+    try {
+      await fs.rename(req.file.path, targetPath);
+    } catch (error) {
+      console.error('Unable to store uploaded video:', error);
+      await fs.unlink(req.file.path).catch(() => {});
+      return res.status(500).json({ error: 'Failed to store uploaded video.' });
+    }
+
+    videoUrl = `/uploads/${fileName}`;
+  } else {
     await fs.unlink(req.file.path).catch(() => {});
-    return res.status(500).json({ error: 'Failed to store uploaded video.' });
   }
 
-  const videoUrl = `/uploads/${fileName}`;
   const store = await readStore();
   const index = store.properties.findIndex((property: any) => property.id === propertyId);
   if (index === -1) {
@@ -957,18 +987,25 @@ app.post('/api/admin/upload-image', imageUpload.single('image'), async (req, res
     await fs.unlink(req.file.path).catch(() => {});
     return res.status(400).json({ error: 'Unsupported image file type.' });
   }
-  const fileName = `${req.file.filename}${extension}`;
-  const targetPath = path.join(UPLOADS_DIR, fileName);
+  let imageUrl = await uploadFileToStorage(req.file, 'image', extension);
 
-  try {
-    await fs.rename(req.file.path, targetPath);
-  } catch (error) {
-    console.error('Unable to store uploaded image:', error);
+  if (!imageUrl) {
+    const fileName = `${req.file.filename}${extension}`;
+    const targetPath = path.join(UPLOADS_DIR, fileName);
+
+    try {
+      await fs.rename(req.file.path, targetPath);
+    } catch (error) {
+      console.error('Unable to store uploaded image:', error);
+      await fs.unlink(req.file.path).catch(() => {});
+      return res.status(500).json({ error: 'Failed to store uploaded image.' });
+    }
+
+    imageUrl = `/uploads/${fileName}`;
+  } else {
     await fs.unlink(req.file.path).catch(() => {});
-    return res.status(500).json({ error: 'Failed to store uploaded image.' });
   }
 
-  const imageUrl = `/uploads/${fileName}`;
   const store = await readStore();
   store.settings = { ...store.settings, [key]: imageUrl };
   await writeStore(store);
@@ -1009,19 +1046,25 @@ app.post('/api/admin/upload-property-image', imageUpload.single('image'), async 
     await fs.unlink(req.file.path).catch(() => {});
     return res.status(400).json({ error: 'Unsupported image file type.' });
   }
+  let imageUrl = await uploadFileToStorage(req.file, 'property-image', extension);
 
-  const fileName = `${req.file.filename}${extension}`;
-  const targetPath = path.join(UPLOADS_DIR, fileName);
+  if (!imageUrl) {
+    const fileName = `${req.file.filename}${extension}`;
+    const targetPath = path.join(UPLOADS_DIR, fileName);
 
-  try {
-    await fs.rename(req.file.path, targetPath);
-  } catch (error) {
-    console.error('Unable to store uploaded property image:', error);
+    try {
+      await fs.rename(req.file.path, targetPath);
+    } catch (error) {
+      console.error('Unable to store uploaded property image:', error);
+      await fs.unlink(req.file.path).catch(() => {});
+      return res.status(500).json({ error: 'Failed to store uploaded property image.' });
+    }
+
+    imageUrl = `/uploads/${fileName}`;
+  } else {
     await fs.unlink(req.file.path).catch(() => {});
-    return res.status(500).json({ error: 'Failed to store uploaded property image.' });
   }
 
-  const imageUrl = `/uploads/${fileName}`;
   const store = await readStore();
   const index = store.properties.findIndex((property: any) => property.id === propertyId);
   if (index === -1) {
