@@ -34,6 +34,7 @@ import {
   Scale,
   ChevronLeft,
   ChevronRight,
+  ChevronDown,
   ExternalLink,
   Eye,
   Info,
@@ -42,7 +43,8 @@ import {
   Tag,
   Check,
   Layout,
-  MessageSquare
+  MessageSquare,
+  Download
 } from "lucide-react";
 import React, { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { AIChatBot } from "./components/AIChatBot";
@@ -73,6 +75,27 @@ interface Property {
   status: 'Available' | 'Under Offer' | 'Sold' | 'Rented' | 'Unavailable';
 }
 
+type RentUnitFilter = 'all' | 'single-room' | 'bedsitter' | '1-bedroom' | '2-bedroom' | 'hostel';
+
+type HeroQuickPick = {
+  label: string;
+  location: string;
+  displayPrice: string;
+  priceRange: string;
+  unitType: RentUnitFilter;
+  tone: string;
+};
+
+interface RentalPriceBand {
+  id: string;
+  label: string;
+  location: string;
+  unitType: Exclude<RentUnitFilter, 'all'>;
+  displayPrice: string;
+  priceRange: string;
+  tone: string;
+}
+
 interface Testimonial {
   id: string;
   name: string;
@@ -86,6 +109,13 @@ interface Testimonial {
 interface SiteConfig {
   siteName: string;
   siteNameSecondary: string;
+  siteLogo: string;
+  appIcon: string;
+  bodyFontFamily: string;
+  headingFontFamily: string;
+  bodyTextColor: string;
+  headingTextColor: string;
+  footerTextColor: string;
   heroTitle: string;
   heroSubtitle: string;
   heroBadge: string;
@@ -108,6 +138,12 @@ interface SiteConfig {
   footerBgImage?: string;
   viewingFee: string;
   adminEmail: string;
+  singleRoomPriceRange: string;
+  bedsitterPriceRange: string;
+  oneBedroomPriceRange: string;
+  twoBedroomPriceRange: string;
+  hostelPriceRange: string;
+  rentalPriceBands: RentalPriceBand[];
   propertiesManaged: string;
   happyClients: string;
   yearsExperience: string;
@@ -123,10 +159,22 @@ interface SiteConfig {
   officeWorkingHours: string;
 }
 
+interface BeforeInstallPromptEvent extends Event {
+  prompt: () => Promise<void>;
+  userChoice: Promise<{ outcome: 'accepted' | 'dismissed'; platform?: string }>;
+}
+
 // --- Data ---
 const INITIAL_CONFIG: SiteConfig = {
   siteName: "LPHASK Homes",
   siteNameSecondary: "& Properties",
+  siteLogo: "",
+  appIcon: "/icon.svg",
+  bodyFontFamily: "Inter, ui-sans-serif, system-ui, sans-serif",
+  headingFontFamily: "Inter, ui-sans-serif, system-ui, sans-serif",
+  bodyTextColor: "#0f172a",
+  headingTextColor: "#020617",
+  footerTextColor: "#bfdbfe",
   heroTitle: "",
   heroSubtitle: "",
   heroBadge: "",
@@ -154,11 +202,311 @@ const INITIAL_CONFIG: SiteConfig = {
   contactBgImage: "",
   footerBgImage: "",
   viewingFee: "",
+  singleRoomPriceRange: "Ksh 3k - 8k",
+  bedsitterPriceRange: "Ksh 6k - 12k",
+  oneBedroomPriceRange: "Ksh 10k - 20k",
+  twoBedroomPriceRange: "Ksh 18k - 35k",
+  hostelPriceRange: "Ksh 2k - 6k",
+  rentalPriceBands: [],
   services: [],
   testimonials: []
 };
 
 const PROPERTIES: Property[] = []; // Property inventory is loaded from the secure backend store.
+
+const FONT_PRESETS = [
+  { label: 'Modern Sans', value: 'Inter, ui-sans-serif, system-ui, sans-serif' },
+  { label: 'Elegant Serif', value: 'Georgia, ui-serif, serif' },
+  { label: 'Clean Sans', value: 'Verdana, Geneva, sans-serif' },
+  { label: 'Readable Sans', value: 'Trebuchet MS, Arial, sans-serif' },
+  { label: 'Mono Accent', value: 'Monaco, Consolas, monospace' },
+] as const;
+
+const buildInstallManifest = (config: SiteConfig) => {
+  const appIcon = config.appIcon || config.siteLogo || '/icon.svg';
+  return {
+    name: `${config.siteName} ${config.siteNameSecondary}`.trim(),
+    short_name: config.siteName,
+    description: `${config.siteName} ${config.siteNameSecondary}`.trim(),
+    start_url: '/',
+    scope: '/',
+    display: 'standalone',
+    background_color: '#020617',
+    theme_color: '#047857',
+    icons: [
+      {
+        src: appIcon,
+        sizes: 'any',
+        type: 'image/svg+xml',
+        purpose: 'any maskable',
+      },
+    ],
+  };
+};
+
+const applyInstallManifest = (config: SiteConfig) => {
+  if (typeof document === 'undefined') return () => {};
+  const iconHref = config.appIcon || config.siteLogo || '/icon.svg';
+  const manifest = buildInstallManifest(config);
+  const blob = new Blob([JSON.stringify(manifest)], { type: 'application/manifest+json' });
+  const href = URL.createObjectURL(blob);
+  let link = document.querySelector<HTMLLinkElement>('link[rel="manifest"]');
+  if (!link) {
+    link = document.createElement('link');
+    link.rel = 'manifest';
+    document.head.appendChild(link);
+  }
+  link.href = href;
+  let iconLink = document.querySelector<HTMLLinkElement>('link[rel="icon"]');
+  if (!iconLink) {
+    iconLink = document.createElement('link');
+    iconLink.rel = 'icon';
+    document.head.appendChild(iconLink);
+  }
+  iconLink.href = iconHref;
+  let appleIconLink = document.querySelector<HTMLLinkElement>('link[rel="apple-touch-icon"]');
+  if (!appleIconLink) {
+    appleIconLink = document.createElement('link');
+    appleIconLink.rel = 'apple-touch-icon';
+    document.head.appendChild(appleIconLink);
+  }
+  appleIconLink.href = iconHref;
+  document.title = `${config.siteName} ${config.siteNameSecondary}`.trim();
+  return () => URL.revokeObjectURL(href);
+};
+
+const INSTALL_DISMISSED_KEY = 'lphask-install-prompt-dismissed';
+const OPEN_INSTALL_PROMPT_EVENT = 'open-install-prompt';
+
+const InstallAndStartupOverlay = ({ config }: { config: SiteConfig }) => {
+  const [showInstall, setShowInstall] = useState(false);
+  const [showStartup, setShowStartup] = useState(true);
+  const [showFloatingInstall, setShowFloatingInstall] = useState(true);
+  const [installPromptEvent, setInstallPromptEvent] = useState<BeforeInstallPromptEvent | null>(null);
+
+  useEffect(() => {
+    const showInstallLater = window.setTimeout(() => {
+      if (!localStorage.getItem(INSTALL_DISMISSED_KEY)) {
+        setShowInstall(true);
+      }
+    }, 2200);
+
+    const hideStartup = window.setTimeout(() => {
+      setShowStartup(false);
+    }, 1500);
+
+    const hideFloatingInstall = window.setTimeout(() => {
+      setShowFloatingInstall(false);
+    }, 10000);
+
+    const handleBeforeInstallPrompt = (event: Event) => {
+      event.preventDefault();
+      setInstallPromptEvent(event as BeforeInstallPromptEvent);
+      if (!localStorage.getItem(INSTALL_DISMISSED_KEY)) {
+        setShowInstall(true);
+      }
+    };
+
+    const handleAppInstalled = () => {
+      setShowInstall(false);
+      localStorage.setItem(INSTALL_DISMISSED_KEY, 'true');
+    };
+
+    const handleOpenInstallPrompt = () => {
+      setShowInstall(true);
+    };
+
+    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    window.addEventListener('appinstalled', handleAppInstalled);
+    window.addEventListener(OPEN_INSTALL_PROMPT_EVENT, handleOpenInstallPrompt as EventListener);
+
+    return () => {
+      window.clearTimeout(showInstallLater);
+      window.clearTimeout(hideStartup);
+      window.clearTimeout(hideFloatingInstall);
+      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+      window.removeEventListener('appinstalled', handleAppInstalled);
+      window.removeEventListener(OPEN_INSTALL_PROMPT_EVENT, handleOpenInstallPrompt as EventListener);
+    };
+  }, []);
+
+  const handleInstall = async () => {
+    if (!installPromptEvent) {
+      setShowInstall(false);
+      localStorage.setItem(INSTALL_DISMISSED_KEY, 'true');
+      return;
+    }
+
+    await installPromptEvent.prompt();
+    const choice = await installPromptEvent.userChoice;
+    if (choice.outcome === 'accepted') {
+      localStorage.setItem(INSTALL_DISMISSED_KEY, 'true');
+    }
+    setShowInstall(false);
+    setInstallPromptEvent(null);
+  };
+
+  const handleDismiss = () => {
+    setShowInstall(false);
+    localStorage.setItem(INSTALL_DISMISSED_KEY, 'true');
+  };
+
+  const handleQuickInstall = async () => {
+    if (installPromptEvent) {
+      await handleInstall();
+      return;
+    }
+
+    setShowInstall(true);
+  };
+
+  return (
+    <>
+      <AnimatePresence>
+        {showStartup && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[260] flex items-center justify-center overflow-hidden bg-slate-950 text-white"
+          >
+            <div className="absolute inset-0 -z-10 bg-[radial-gradient(circle_at_top,rgba(16,185,129,0.18),transparent_42%),linear-gradient(180deg,#020617_0%,#0f172a_55%,#020617_100%)]" />
+            <motion.div
+              className="absolute -top-24 left-1/2 h-72 w-72 -translate-x-1/2 rounded-full bg-emerald-500/15 blur-3xl"
+              animate={{ scale: [1, 1.08, 1] }}
+              transition={{ duration: 4.5, repeat: Infinity, ease: 'easeInOut' }}
+            />
+            <div className="relative flex w-[min(92vw,760px)] flex-col items-center gap-8 px-6 text-center">
+              <div className="flex items-center gap-4">
+                {config.siteLogo ? (
+                  <img
+                    src={config.siteLogo}
+                    alt={config.siteName}
+                    className="h-16 w-16 rounded-[1.4rem] object-contain bg-white/10 border border-white/10 shadow-2xl"
+                    referrerPolicy="no-referrer"
+                  />
+                ) : (
+                  <div className="h-16 w-16 rounded-[1.4rem] bg-emerald-600/20 border border-white/10 flex items-center justify-center shadow-2xl">
+                    <Home className="h-8 w-8 text-emerald-300" />
+                  </div>
+                )}
+                <div className="text-left">
+                  <p className="text-[0.7rem] font-black uppercase tracking-[0.55em] text-emerald-300/70">Launching</p>
+                  <h2 className="text-3xl md:text-4xl font-black tracking-tight">{config.siteName}</h2>
+                </div>
+              </div>
+
+              <p className="max-w-2xl text-base md:text-lg text-white/72">
+                Loading your property experience, rental bands, and saved preferences.
+              </p>
+
+              <div className="flex items-center gap-4 rounded-[2rem] border border-white/10 bg-white/5 px-5 py-4 backdrop-blur-xl">
+                <div className="relative flex h-14 w-14 items-center justify-center rounded-full border border-emerald-400/25 bg-emerald-400/10">
+                  <motion.div
+                    className="absolute inset-0 rounded-full border-2 border-emerald-300/30 border-t-emerald-300"
+                    animate={{ rotate: 360 }}
+                    transition={{ duration: 1.6, repeat: Infinity, ease: 'linear' }}
+                  />
+                  <div className="h-2.5 w-2.5 rounded-full bg-emerald-300 shadow-[0_0_18px_rgba(110,231,183,0.9)]" />
+                </div>
+                <div className="text-left">
+                  <p className="text-[0.65rem] font-black uppercase tracking-[0.45em] text-white/45">Preparing your dashboard</p>
+                  <p className="mt-1 text-sm text-white/72">Syncing listings, filters, and install state.</p>
+                </div>
+              </div>
+
+              <div className="grid w-full gap-3 sm:grid-cols-3">
+                {[
+                  'Verified rentals',
+                  'Live price bands',
+                  'Fast install ready',
+                ].map((label, index) => (
+                  <motion.div
+                    key={label}
+                    initial={{ opacity: 0, y: 14 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.25 + index * 0.12, duration: 0.45 }}
+                    className="rounded-[1.35rem] border border-white/10 bg-white/[0.04] px-4 py-3 text-left"
+                  >
+                    <div className="mb-3 h-1.5 w-14 rounded-full bg-gradient-to-r from-emerald-400 to-emerald-200" />
+                    <p className="text-sm font-semibold text-white/82">{label}</p>
+                  </motion.div>
+                ))}
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {showInstall && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[255] flex items-end justify-center bg-slate-950/50 px-4 pb-4 pt-12 backdrop-blur-sm"
+            onClick={handleDismiss}
+          >
+            <motion.div
+              initial={{ y: 40, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              exit={{ y: 40, opacity: 0 }}
+              transition={{ type: 'spring', stiffness: 260, damping: 28 }}
+              onClick={(event) => event.stopPropagation()}
+              className="w-full max-w-[34rem] rounded-[2rem] border border-white/10 bg-slate-950/96 p-4 text-white shadow-2xl backdrop-blur-xl"
+            >
+              <div className="mx-auto mb-4 h-1.5 w-14 rounded-full bg-white/15" />
+              <div className="flex items-start gap-4">
+                <div className="rounded-2xl bg-emerald-500/20 p-3 text-emerald-300">
+                  <Download className="h-6 w-6" />
+                </div>
+                <div className="flex-1">
+                  <h3 className="text-lg font-bold">Install the app</h3>
+                  <p className="mt-1 text-sm text-white/70">
+                    Save {config.siteName} on your device for faster access and offline browsing.
+                  </p>
+                </div>
+              </div>
+              <div className="mt-5 grid gap-3 sm:grid-cols-2">
+                <button
+                  type="button"
+                  onClick={handleInstall}
+                  className="rounded-2xl bg-emerald-500 px-4 py-3 text-sm font-bold text-slate-950 transition hover:bg-emerald-400"
+                >
+                  Install now
+                </button>
+                <button
+                  type="button"
+                  onClick={handleDismiss}
+                  className="rounded-2xl border border-white/10 px-4 py-3 text-sm font-semibold text-white/80 transition hover:bg-white/5"
+                >
+                  Not now
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {showFloatingInstall && (
+          <motion.button
+            type="button"
+            onClick={handleQuickInstall}
+            aria-label="Download app"
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 12 }}
+            className="fixed bottom-5 right-5 z-[254] inline-flex items-center gap-3 rounded-full border border-emerald-400/30 bg-slate-950/90 px-4 py-3 text-sm font-bold text-white shadow-2xl backdrop-blur-xl transition hover:border-emerald-300 hover:bg-slate-900"
+          >
+            <Download className="h-4 w-4 text-emerald-300" />
+            <span className="hidden sm:inline">Download app</span>
+          </motion.button>
+        )}
+      </AnimatePresence>
+    </>
+  );
+};
 
 const normalizeSearchValue = (value: unknown) => String(value ?? '').trim().toLowerCase();
 
@@ -183,6 +531,147 @@ const matchesPropertySearch = (property: Property, query: string) => {
 
   return searchableFields.some((field) => normalizeSearchValue(field).includes(normalizedQuery));
 };
+
+const getRentUnitType = (property: Property): RentUnitFilter => {
+  const fields = normalizeSearchValue([
+    property.title,
+    property.category,
+    property.description,
+    ...(property.tags ?? []),
+  ].join(' '));
+
+  if (fields.includes('hostel')) return 'hostel';
+  if (fields.includes('single room') || fields.includes('singleroom') || fields.includes('studio')) return 'single-room';
+  if (fields.includes('bedsitter')) return 'bedsitter';
+  if (fields.includes('1-bedroom') || fields.includes('1 bedroom') || fields.includes('one bedroom') || fields.includes('1b') || property.bedrooms === 1) {
+    return '1-bedroom';
+  }
+  if (fields.includes('2-bedroom') || fields.includes('2 bedroom') || fields.includes('two bedroom') || fields.includes('2b') || property.bedrooms === 2) {
+    return '2-bedroom';
+  }
+  if (property.bedrooms === 0) return 'single-room';
+  return 'all';
+};
+
+const matchesRentUnitFilter = (property: Property, unitType: RentUnitFilter) => {
+  if (unitType === 'all') return true;
+  return getRentUnitType(property) === unitType;
+};
+
+const matchesPriceBand = (price: number, priceRange: string) => {
+  if (priceRange === 'all') return true;
+  const [min, max] = priceRange.split('-').map(Number);
+  if (Number.isFinite(min) && Number.isFinite(max)) {
+    return price >= min && price <= max;
+  }
+  if (Number.isFinite(min)) {
+    return price >= min;
+  }
+  return true;
+};
+
+const RENTAL_UNIT_LABELS: Record<Exclude<RentUnitFilter, 'all'>, string> = {
+  'single-room': 'Single Room',
+  bedsitter: 'Bedsitter',
+  '1-bedroom': '1 Bedroom',
+  '2-bedroom': '2 Bedroom',
+  hostel: 'Hostel',
+};
+
+const RENTAL_UNIT_TONES: Record<Exclude<RentUnitFilter, 'all'>, string> = {
+  'single-room': 'from-emerald-500/20 to-emerald-700/30',
+  bedsitter: 'from-cyan-500/20 to-cyan-700/30',
+  '1-bedroom': 'from-sky-500/20 to-sky-700/30',
+  '2-bedroom': 'from-amber-500/20 to-amber-700/30',
+  hostel: 'from-rose-500/20 to-rose-700/30',
+};
+
+const createRentalPriceBand = (overrides: Partial<RentalPriceBand> = {}): RentalPriceBand => {
+  const unitType = overrides.unitType ?? 'single-room';
+  return {
+    id: overrides.id ?? `band-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+    label: overrides.label ?? RENTAL_UNIT_LABELS[unitType] ?? 'Rental Band',
+    location: overrides.location ?? 'all',
+    unitType,
+    displayPrice: overrides.displayPrice ?? '',
+    priceRange: overrides.priceRange ?? '',
+    tone: overrides.tone ?? RENTAL_UNIT_TONES[unitType] ?? 'from-slate-500/20 to-slate-700/30',
+  };
+};
+
+const getDefaultRentalBands = (config: SiteConfig): RentalPriceBand[] => [
+  createRentalPriceBand({
+    id: 'legacy-single-room',
+    label: 'Single Rooms',
+    location: 'all',
+    unitType: 'single-room',
+    displayPrice: config.singleRoomPriceRange || 'Ksh 3k - 8k',
+    priceRange: '0-8000',
+  }),
+  createRentalPriceBand({
+    id: 'legacy-bedsitter',
+    label: 'Bedsitters',
+    location: 'all',
+    unitType: 'bedsitter',
+    displayPrice: config.bedsitterPriceRange || 'Ksh 6k - 12k',
+    priceRange: '6000-12000',
+  }),
+  createRentalPriceBand({
+    id: 'legacy-1-bedroom',
+    label: '1 Bedrooms',
+    location: 'all',
+    unitType: '1-bedroom',
+    displayPrice: config.oneBedroomPriceRange || 'Ksh 10k - 20k',
+    priceRange: '10000-20000',
+  }),
+  createRentalPriceBand({
+    id: 'legacy-2-bedroom',
+    label: '2 Bedrooms',
+    location: 'all',
+    unitType: '2-bedroom',
+    displayPrice: config.twoBedroomPriceRange || 'Ksh 18k - 35k',
+    priceRange: '18000-35000',
+  }),
+  createRentalPriceBand({
+    id: 'legacy-hostel',
+    label: 'Hostels',
+    location: 'all',
+    unitType: 'hostel',
+    displayPrice: config.hostelPriceRange || 'Ksh 2k - 6k',
+    priceRange: '0-6000',
+  }),
+];
+
+const getEffectiveRentalBands = (config: SiteConfig) => {
+  const configuredBands = (config.rentalPriceBands ?? [])
+    .map((band) => createRentalPriceBand({
+      ...band,
+      location: band.location || 'all',
+      label: band.label || RENTAL_UNIT_LABELS[band.unitType] || 'Rental Band',
+      tone: band.tone || RENTAL_UNIT_TONES[band.unitType] || 'from-slate-500/20 to-slate-700/30',
+    }))
+    .filter((band) => band.priceRange || band.displayPrice);
+
+  return configuredBands.length > 0 ? configuredBands : getDefaultRentalBands(config);
+};
+
+const matchesLocationFilter = (propertyLocation: string, location: string) => {
+  if (location === 'all') return true;
+  return normalizeSearchValue(propertyLocation).includes(normalizeSearchValue(location));
+};
+
+const UNIT_FILTER_OPTIONS: Array<{
+  label: string;
+  value: RentUnitFilter;
+  priceRange: string;
+}> = [
+  { label: 'All Units', value: 'all', priceRange: 'all' },
+  { label: 'Single Room', value: 'single-room', priceRange: '0-8000' },
+  { label: 'Bedsitter', value: 'bedsitter', priceRange: '6000-12000' },
+  { label: '1 Bedroom', value: '1-bedroom', priceRange: '10000-20000' },
+  { label: '2 Bedroom', value: '2-bedroom', priceRange: '18000-35000' },
+  { label: 'Hostel', value: 'hostel', priceRange: '0-6000' },
+];
 
 // --- SEO & Structured Data ---
 const SEOData = ({ config }: { config: SiteConfig }) => {
@@ -244,10 +733,20 @@ const Navbar = ({ onSearch, searchValue, onBookViewing, config }: { onSearch: (v
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center">
           <div className="flex items-center">
-            <span className="text-2xl font-extrabold tracking-tighter">
-              <span className="text-emerald-700">{config.siteName}</span>
-              <span className="text-red-700 ml-1">{config.siteNameSecondary}</span>
-            </span>
+            <div className="flex items-center gap-3">
+              {config.siteLogo ? (
+                <img
+                  src={config.siteLogo}
+                  alt={config.siteName}
+                  className="h-10 w-10 rounded-xl object-contain bg-white/80 shadow-sm border border-white/50"
+                  referrerPolicy="no-referrer"
+                />
+              ) : null}
+              <span className="text-2xl font-extrabold tracking-tighter">
+                <span className="text-emerald-700">{config.siteName}</span>
+                <span className="text-red-700 ml-1">{config.siteNameSecondary}</span>
+              </span>
+            </div>
           </div>
           
           {/* Desktop Nav */}
@@ -274,6 +773,13 @@ const Navbar = ({ onSearch, searchValue, onBookViewing, config }: { onSearch: (v
                 {link.name}
               </a>
             ))}
+            <button
+              type="button"
+              onClick={() => window.dispatchEvent(new CustomEvent(OPEN_INSTALL_PROMPT_EVENT))}
+              className={`text-sm font-semibold rounded-full px-4 py-2 border transition-colors ${scrolled ? 'text-emerald-700 border-emerald-200 bg-emerald-50 hover:bg-emerald-100' : 'text-white border-white/20 bg-white/10 hover:bg-white/20'}`}
+            >
+              Download App
+            </button>
             <button onClick={onBookViewing} className="bg-emerald-700 text-white px-5 py-2 rounded-full text-sm font-bold hover:bg-emerald-800 transition-all shadow-lg shadow-emerald-700/20">
               Book Viewing
             </button>
@@ -322,6 +828,16 @@ const Navbar = ({ onSearch, searchValue, onBookViewing, config }: { onSearch: (v
                     {link.name}
                   </a>
                 ))}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsOpen(false);
+                    window.dispatchEvent(new CustomEvent(OPEN_INSTALL_PROMPT_EVENT));
+                  }}
+                  className="block w-full px-3 py-4 text-base font-medium text-emerald-700 hover:bg-emerald-50 rounded-lg text-left"
+                >
+                  Download App
+                </button>
               </div>
               <button onClick={onBookViewing} className="w-full mt-4 bg-emerald-700 text-white px-5 py-3 rounded-xl text-base font-bold">
                 Book Viewing
@@ -334,9 +850,34 @@ const Navbar = ({ onSearch, searchValue, onBookViewing, config }: { onSearch: (v
   );
 };
 
-const Hero = ({ onSearch, properties, config }: { onSearch: (val: string) => void, properties: Property[], config: SiteConfig }) => {
+const buildHeroQuickPicks = (config: SiteConfig): HeroQuickPick[] => getEffectiveRentalBands(config).map((band) => ({
+  label: band.label,
+  location: band.location,
+  displayPrice: band.displayPrice || 'Price on request',
+  priceRange: band.priceRange || 'all',
+  unitType: band.unitType,
+  tone: band.tone,
+}));
+
+const Hero = ({ onSearch, onQuickPick, properties, config }: { onSearch: (val: string) => void, onQuickPick: (pick: HeroQuickPick) => void, properties: Property[], config: SiteConfig }) => {
+  const headingStyle = { fontFamily: config.headingFontFamily, color: '#ffffff' };
+  const bodyStyle = { fontFamily: config.bodyFontFamily, color: '#dbeafe' };
   const [searchValue, setSearchValue] = useState("");
   const [showSuggestions, setShowSuggestions] = useState(false);
+
+  const livePickRows = useMemo(() => {
+    const counts = buildHeroQuickPicks(config).map((pick) => ({
+      ...pick,
+      count: properties.filter((property) =>
+        property.type === 'rent' &&
+        matchesRentUnitFilter(property, pick.unitType) &&
+        matchesPriceBand(property.price, pick.priceRange) &&
+        matchesLocationFilter(property.location, pick.location)
+      ).length,
+    }));
+
+    return [...counts, ...counts];
+  }, [config, properties]);
 
   const suggestions = useMemo(() => {
     const q = normalizeSearchValue(searchValue);
@@ -374,136 +915,204 @@ const Hero = ({ onSearch, properties, config }: { onSearch: (val: string) => voi
   };
 
   return (
-    <section id="home" className="relative min-h-[110vh] overflow-hidden pb-40 lg:pb-72">
+    <section id="home" className="relative min-h-[115vh] overflow-hidden pb-24 lg:pb-28">
       {/* Background Image with Overlay */}
       <div className="absolute inset-0 z-0">
-        <img 
-          src={config.heroBgImage} 
-          alt="Hero Background" 
+        <img
+          src={config.heroBgImage}
+          alt="Hero Background"
           className="w-full h-full object-cover"
           referrerPolicy="no-referrer"
         />
-        <div className="absolute inset-0 bg-gradient-to-r from-slate-900/90 via-slate-900/60 to-transparent"></div>
+        <div className="absolute inset-0 bg-gradient-to-r from-slate-950/92 via-slate-900/75 to-slate-900/45"></div>
         <div className="animated-bg-overlay"></div>
       </div>
 
-      <div className="relative z-20 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-32 pb-8 w-full">
-        <motion.div 
-          initial={{ opacity: 0, y: 40 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8, ease: 'easeOut' }}
-          className="max-w-2xl mb-48 lg:mb-64"
-        >
-          <motion.span
-            initial={{ opacity: 0, y: 10 }}
+      <div className="relative z-20 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-28 lg:pt-32 pb-8 w-full">
+        <div className="grid gap-10 items-center min-h-[78vh]">
+          <motion.div
+            initial={{ opacity: 0, y: 40 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.2 }}
-            className="inline-block px-4 py-1.5 mb-6 text-xs font-bold tracking-widest text-white uppercase bg-red-700 rounded-full"
+            transition={{ duration: 0.8, ease: 'easeOut' }}
+            className="max-w-2xl"
           >
-            {config.heroBadge}
-          </motion.span>
-          <motion.h1
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.9, ease: 'easeOut', delay: 0.25 }}
-            className="text-5xl md:text-7xl font-extrabold text-white leading-tight mb-6"
-          >
-            {config.heroTitle.split(' ').map((word, i) => (
-              word.toLowerCase() === 'premium'
-                ? <span key={i} className="text-emerald-500"> {word} </span>
-                : ` ${word} `
-            ))}
-          </motion.h1>
-          <motion.p
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.9, delay: 0.35 }}
-            className="text-lg md:text-xl text-slate-300 mb-10 leading-relaxed"
-          >
-            {config.heroSubtitle}
-          </motion.p>
-        </motion.div>
-      </div>
+            <motion.span
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.2 }}
+              className="inline-flex items-center gap-2 px-4 py-1.5 mb-6 text-xs font-bold tracking-widest text-white uppercase bg-red-700/95 rounded-full shadow-lg shadow-red-950/20"
+            >
+              <span className="h-2 w-2 rounded-full bg-white animate-pulse" />
+              {config.heroBadge}
+            </motion.span>
 
-      {/* Stats Overlay */}
-      <div className="absolute bottom-0 left-0 right-0 bg-white/5 backdrop-blur-xl border-t border-white/10 py-8 hidden lg:block">
-        <div className="max-w-7xl mx-auto px-4 space-y-6">
-          {/* Search Bar */}
-          <div className="relative">
-            <form onSubmit={handleSearch} className="flex flex-col sm:flex-row gap-2 bg-slate-900/60 backdrop-blur-md p-2 rounded-2xl shadow-2xl">
-              <div className="flex-1 flex items-center px-4 py-3 bg-white/95 backdrop-blur-sm rounded-xl">
-                <Search className="text-slate-400 mr-2" size={20} />
-                <input 
-                  type="text" 
-                  placeholder="Search by location, type, or ID (e.g. R1)..." 
-                  className="w-full bg-transparent text-slate-900 focus:outline-none placeholder:text-slate-500 font-medium"
-                  value={searchValue}
-                  onChange={(e) => {
-                    setSearchValue(e.target.value);
-                    setShowSuggestions(true);
-                  }}
-                  onFocus={() => setShowSuggestions(true)}
-                />
+            <motion.h1
+              initial={{ opacity: 0, y: 30 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.9, ease: 'easeOut', delay: 0.25 }}
+              className="text-5xl md:text-7xl font-extrabold text-white leading-[1.02] mb-6 max-w-xl"
+              style={headingStyle}
+            >
+              {config.heroTitle.split(' ').map((word, i) => (
+                word.toLowerCase() === 'premium'
+                  ? <span key={i} className="text-emerald-500"> {word} </span>
+                  : ` ${word} `
+              ))}
+            </motion.h1>
+
+            <motion.p
+              initial={{ opacity: 0, y: 30 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.9, delay: 0.35 }}
+              className="text-lg md:text-xl text-slate-300 mb-10 leading-relaxed max-w-xl"
+              style={bodyStyle}
+            >
+              {config.heroSubtitle}
+            </motion.p>
+
+            <motion.div
+              initial={{ opacity: 0, y: 18 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.7, delay: 0.42 }}
+              className="flex flex-wrap items-center gap-3 mb-8"
+            >
+              <a href="#rentals" className="inline-flex items-center gap-2 rounded-full bg-emerald-600 px-6 py-3 text-sm font-bold text-white shadow-xl shadow-emerald-900/20 transition-transform hover:-translate-y-0.5">
+                Explore Rentals
+                <ArrowRight size={18} />
+              </a>
+              <a href="#contact" className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-6 py-3 text-sm font-bold text-white backdrop-blur-md transition-all hover:bg-white/20">
+                Contact Us
+              </a>
+            </motion.div>
+
+            <motion.div
+              initial={{ opacity: 0, y: 24 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.8, delay: 0.45 }}
+              className="space-y-4"
+            >
+              <div className="flex items-center gap-3 text-xs font-bold uppercase tracking-[0.35em] text-white/50">
+                <span className="h-px w-10 bg-white/25" />
+                Live Rental Band
               </div>
-              <button type="submit" className="bg-emerald-600 text-white px-8 py-3 rounded-xl font-bold hover:bg-emerald-700 transition-all flex items-center justify-center gap-2 shadow-lg">
-                <Search size={18} />
-                Search Properties
-              </button>
-            </form>
 
-            {/* Suggestions Dropdown */}
-            <AnimatePresence>
-              {showSuggestions && suggestions.length > 0 && (
-                <motion.div 
-                  initial={{ opacity: 0, y: -10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -10 }}
-                  className="absolute top-full left-0 right-0 mt-2 bg-white rounded-2xl shadow-2xl overflow-hidden z-50 border border-slate-100"
+              <div className="overflow-hidden rounded-[2rem] border border-white/10 bg-white/5 backdrop-blur-xl shadow-2xl shadow-black/10">
+                <motion.div
+                  className="flex w-max gap-3 px-3 py-3"
+                  animate={{ x: ['-50%', '0%'] }}
+                  transition={{ duration: 26, ease: 'linear', repeat: Infinity }}
                 >
-                  {suggestions.map((suggestion, idx) => (
-                    <button
-                      key={idx}
-                      onClick={() => handleSuggestionClick(suggestion)}
-                      className="w-full px-6 py-4 text-left hover:bg-slate-50 flex items-center gap-3 text-slate-700 font-medium transition-colors border-b border-slate-50 last:border-0"
+                  {livePickRows.map((pick, index) => (
+                    <motion.button
+                      key={`${pick.label}-${index}`}
+                      type="button"
+                      whileHover={{ y: -2, scale: 1.01 }}
+                      whileTap={{ scale: 0.98 }}
+                      onClick={() => onQuickPick(pick)}
+                      className={`min-w-[220px] rounded-[1.5rem] border border-white/10 bg-gradient-to-br ${pick.tone} px-5 py-4 text-left text-white transition-all`}
                     >
-                      <MapPin size={16} className="text-emerald-600" />
-                      {suggestion}
-                    </button>
+                      <div className="flex items-center justify-between gap-4">
+                        <div>
+                          <div className="text-[10px] font-black uppercase tracking-[0.3em] text-white/55 mb-2">
+                            {pick.label}
+                          </div>
+                          <div className="text-lg font-extrabold leading-tight">{pick.displayPrice}</div>
+                          <div className="mt-1 text-[11px] font-semibold text-white/65">
+                            {pick.location === 'all' ? 'All locations' : pick.location}
+                          </div>
+                        </div>
+                        <div className="rounded-2xl bg-white/15 px-3 py-2 text-right">
+                          <div className="text-lg font-black leading-none">{pick.count}</div>
+                          <div className="text-[9px] font-bold uppercase tracking-[0.25em] text-white/60">Live</div>
+                        </div>
+                      </div>
+                      <div className="mt-4 flex items-center justify-between text-[11px] font-semibold text-white/70">
+                        <span>Available now</span>
+                        <span>Tap to filter</span>
+                      </div>
+                    </motion.button>
                   ))}
                 </motion.div>
-              )}
-            </AnimatePresence>
-          </div>
-          
-          <div className="grid grid-cols-4 gap-4 text-white">
-            <div className="text-center rounded-2xl bg-slate-950/80 p-4 border border-white/10 shadow-xl">
-              <div className="text-xl font-bold">{config.propertiesManaged || '500+'}</div>
-              <div className="text-slate-400 text-[10px] mt-1">Properties Managed</div>
-            </div>
-            <div className="text-center rounded-2xl bg-slate-950/80 p-4 border border-white/10 shadow-xl">
-              <div className="text-xl font-bold">{config.happyClients || '1.2k'}</div>
-              <div className="text-slate-400 text-[10px] mt-1">Happy Clients</div>
-            </div>
-            <div className="text-center rounded-2xl bg-slate-950/80 p-4 border border-white/10 shadow-xl">
-              <div className="text-xl font-bold">{config.yearsExperience || '15+'}</div>
-              <div className="text-[10px] text-slate-400 mt-1">Years Experience</div>
-            </div>
-            <div className="text-center rounded-2xl bg-slate-950/80 p-4 border border-white/10 shadow-xl">
-              <div className="text-xl font-bold">{config.secureTransactions || '100%'}</div>
-              <div className="text-slate-400 text-[10px] mt-1">Secure Transactions</div>
-            </div>
-          </div>
-          
-          {/* Buttons moved below stats */}
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <a href="#rentals" className="flex items-center justify-center bg-emerald-600 text-white px-8 py-4 rounded-xl font-bold text-lg hover:bg-emerald-700 transition-all shadow-xl shadow-emerald-600/20 group">
-              Explore Rentals
-              <ArrowRight className="ml-2 group-hover:translate-x-1 transition-transform" size={20} />
-            </a>
-            <a href="#contact" className="flex items-center justify-center bg-white/10 backdrop-blur-md border border-white/20 text-white px-8 py-4 rounded-xl font-bold text-lg hover:bg-white/20 transition-all">
-              Contact Us
-            </a>
-          </div>
+              </div>
+            </motion.div>
+
+            <details className="group mt-6 rounded-[2rem] border border-white/10 bg-white/5 backdrop-blur-xl shadow-2xl shadow-black/10 overflow-hidden">
+              <summary className="ml-auto flex cursor-pointer list-none items-center justify-center p-4 text-white w-fit">
+                <span className="sr-only">Toggle search and filters</span>
+                <span className="flex h-12 w-12 items-center justify-center rounded-full border border-white/15 bg-white/10 backdrop-blur-md transition group-open:bg-emerald-500/20">
+                  <ChevronDown className="h-5 w-5 transition-transform duration-300 group-open:rotate-180" />
+                </span>
+              </summary>
+
+              <div className="border-t border-white/10 p-5 lg:p-6 space-y-5">
+                <form onSubmit={handleSearch} className="flex flex-col sm:flex-row gap-2">
+                  <div className="flex-1 flex items-center px-4 py-3 bg-white/95 backdrop-blur-sm rounded-2xl">
+                    <Search className="text-slate-400 mr-2" size={20} />
+                    <input
+                      type="text"
+                      placeholder="Search by location, type, or ID (e.g. R1)..."
+                      className="w-full bg-transparent text-slate-900 focus:outline-none placeholder:text-slate-500 font-medium"
+                      value={searchValue}
+                      onChange={(e) => {
+                        setSearchValue(e.target.value);
+                        setShowSuggestions(true);
+                      }}
+                      onFocus={() => setShowSuggestions(true)}
+                    />
+                  </div>
+                  <button type="submit" className="bg-emerald-600 text-white px-6 py-3 rounded-2xl font-bold hover:bg-emerald-700 transition-all flex items-center justify-center gap-2 shadow-lg">
+                    <Search size={18} />
+                    Search
+                  </button>
+                </form>
+
+                <AnimatePresence>
+                  {showSuggestions && suggestions.length > 0 && (
+                    <motion.div
+                      initial={{ opacity: 0, y: -10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -10 }}
+                      className="bg-white rounded-2xl shadow-2xl overflow-hidden border border-slate-100"
+                    >
+                      {suggestions.map((suggestion, idx) => (
+                        <button
+                          key={idx}
+                          onClick={() => handleSuggestionClick(suggestion)}
+                          className="w-full px-6 py-4 text-left hover:bg-slate-50 flex items-center gap-3 text-slate-700 font-medium transition-colors border-b border-slate-50 last:border-0"
+                        >
+                          <MapPin size={16} className="text-emerald-600" />
+                          {suggestion}
+                        </button>
+                      ))}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                  <div className="rounded-[1.5rem] bg-white/10 border border-white/10 p-4 text-white">
+                    <div className="text-xs uppercase tracking-[0.3em] text-white/45 mb-2">Properties</div>
+                    <div className="text-2xl font-black">{config.propertiesManaged || '500+'}</div>
+                    <div className="text-[11px] text-white/55 mt-1">Managed</div>
+                  </div>
+                  <div className="rounded-[1.5rem] bg-white/10 border border-white/10 p-4 text-white">
+                    <div className="text-xs uppercase tracking-[0.3em] text-white/45 mb-2">Clients</div>
+                    <div className="text-2xl font-black">{config.happyClients || '1.2k'}</div>
+                    <div className="text-[11px] text-white/55 mt-1">Satisfied</div>
+                  </div>
+                  <div className="rounded-[1.5rem] bg-white/10 border border-white/10 p-4 text-white">
+                    <div className="text-xs uppercase tracking-[0.3em] text-white/45 mb-2">Experience</div>
+                    <div className="text-2xl font-black">{config.yearsExperience || '15+'}</div>
+                    <div className="text-[11px] text-white/55 mt-1">Years</div>
+                  </div>
+                  <div className="rounded-[1.5rem] bg-white/10 border border-white/10 p-4 text-white">
+                    <div className="text-xs uppercase tracking-[0.3em] text-white/45 mb-2">Security</div>
+                    <div className="text-2xl font-black">{config.secureTransactions || '100%'}</div>
+                    <div className="text-[11px] text-white/55 mt-1">Trusted</div>
+                  </div>
+                </div>
+              </div>
+            </details>
+          </motion.div>
         </div>
       </div>
     </section>
@@ -511,6 +1120,8 @@ const Hero = ({ onSearch, properties, config }: { onSearch: (val: string) => voi
 };
 
 const Services = ({ onSelectService, config }: { onSelectService: (service: string) => void, config: SiteConfig }) => {
+  const headingStyle = { fontFamily: config.headingFontFamily, color: config.headingTextColor };
+  const bodyStyle = { fontFamily: config.bodyFontFamily, color: config.bodyTextColor };
   return (
     <section id="services" className="py-24 bg-slate-50 relative overflow-hidden">
       {/* Background Image with Overlay */}
@@ -528,7 +1139,7 @@ const Services = ({ onSelectService, config }: { onSelectService: (service: stri
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
         <div className="text-center mb-16">
           <h2 className="text-emerald-700 font-bold tracking-widest uppercase text-sm mb-4">Our Expertise</h2>
-          <h3 className="text-4xl font-extrabold text-slate-900">Comprehensive Home Solutions</h3>
+          <h3 className="text-4xl font-extrabold text-slate-900" style={headingStyle}>Comprehensive Home Solutions</h3>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
@@ -541,8 +1152,8 @@ const Services = ({ onSelectService, config }: { onSelectService: (service: stri
               <div className={`w-16 h-16 ${service.color} rounded-2xl flex items-center justify-center mb-6`}>
                 <IconRenderer name={service.icon} className={service.color.replace('bg-', 'text-').replace('-50', '-600')} size={32} />
               </div>
-              <h4 className="text-xl font-bold text-slate-900 mb-4">{service.title}</h4>
-              <p className="text-slate-600 leading-relaxed mb-6 flex-1">{service.desc}</p>
+              <h4 className="text-xl font-bold text-slate-900 mb-4" style={headingStyle}>{service.title}</h4>
+              <p className="text-slate-600 leading-relaxed mb-6 flex-1" style={bodyStyle}>{service.desc}</p>
               <button 
                 onClick={() => onSelectService(service.id)}
                 className="flex items-center text-emerald-700 font-bold hover:gap-2 transition-all"
@@ -1338,6 +1949,7 @@ const Listings = ({
   onRequestViewing,
   onRequestInfo,
   config,
+  quickFilter,
 }: { 
   type: 'rent' | 'sale', 
   properties: Property[],
@@ -1348,9 +1960,11 @@ const Listings = ({
   onRequestViewing: (p: Property) => void,
   onRequestInfo: (p: Property) => void,
   config: SiteConfig,
+  quickFilter?: { priceRange: string; unitType: RentUnitFilter; location?: string } | null,
 }) => {
   const [filters, setFilters] = useState({
     priceRange: 'all',
+    unitType: 'all' as RentUnitFilter,
     bedrooms: 'all',
     location: 'all',
     propertyType: 'all',
@@ -1358,6 +1972,7 @@ const Listings = ({
     amenities: [] as string[],
     status: 'all'
   });
+  const [showUnitTypes, setShowUnitTypes] = useState(true);
 
   const allAmenities = useMemo(() => {
     const amenities = new Set<string>();
@@ -1366,6 +1981,44 @@ const Listings = ({
     });
     return Array.from(amenities);
   }, [properties, type]);
+
+  useEffect(() => {
+    if (type !== 'rent' || !quickFilter) return;
+    setFilters((prev) => ({
+      ...prev,
+      priceRange: quickFilter.priceRange,
+      unitType: quickFilter.unitType,
+      location: quickFilter.location ?? prev.location,
+    }));
+  }, [quickFilter, type]);
+
+  const unitTypeStats = useMemo(() => {
+    if (type !== 'rent') return [];
+    return UNIT_FILTER_OPTIONS.map((option) => ({
+      ...option,
+      count: option.value === 'all'
+        ? properties.filter((property) => property.type === type).length
+        : properties.filter((property) =>
+            property.type === type &&
+            matchesRentUnitFilter(property, option.value)
+          ).length,
+    }));
+  }, [properties, type]);
+
+  const handleUnitTypeSelect = (option: typeof UNIT_FILTER_OPTIONS[number]) => {
+    if (type !== 'rent') return;
+    setFilters((prev) => ({
+      ...prev,
+      unitType: option.value,
+      priceRange: 'all',
+    }));
+    if (option.value !== 'all') {
+      setTimeout(() => {
+        const listingsSection = document.getElementById('listings-container');
+        listingsSection?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 0);
+    }
+  };
 
   const filteredProperties = useMemo(() => {
     let result = properties.filter(p => {
@@ -1379,6 +2032,10 @@ const Listings = ({
         } else {
           if (p.price < min) return false;
         }
+      }
+
+      if (type === 'rent' && filters.unitType !== 'all') {
+        if (!matchesRentUnitFilter(p, filters.unitType)) return false;
       }
 
       // Bedrooms Filter (Rentals only)
@@ -1397,7 +2054,7 @@ const Listings = ({
 
       // Location Filter
       if (filters.location !== 'all') {
-        if (p.location !== filters.location) return false;
+        if (!matchesLocationFilter(p.location, filters.location)) return false;
       }
 
       // Amenities Filter
@@ -1449,31 +2106,32 @@ const Listings = ({
       </div>
       
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
-        <div className="flex flex-col xl:flex-row justify-between items-start xl:items-end mb-12 gap-8">
-          <div>
-            <h2 className={`font-bold tracking-widest uppercase text-sm mb-4 ${type === 'rent' ? 'text-emerald-700' : 'text-red-700'}`}>
-              {type === 'rent' ? "Available for Let" : "Properties for Sale"}
-            </h2>
-            <h3 className="text-4xl font-extrabold text-slate-900">
-              {type === 'rent' ? "Featured Rentals" : "Investment Opportunities"}
-            </h3>
-          </div>
-          
-          {/* Filters */}
-          <div className="flex flex-wrap gap-3">
-            <div className="flex items-center bg-slate-100 rounded-xl px-3 py-2">
-              <Navigation size={16} className="text-slate-500 mr-2" />
-              <select 
-                className="bg-transparent text-sm font-semibold focus:outline-none"
-                value={filters.sortBy}
-                onChange={(e) => setFilters(prev => ({ ...prev, sortBy: e.target.value }))}
-              >
-                <option value="default">Sort By</option>
-                <option value="near-me" disabled={!userLocation}>Near Me</option>
-                <option value="price-low">Price: Low to High</option>
-                <option value="price-high">Price: High to Low</option>
-              </select>
+        <div className="mb-12 rounded-[2rem] border border-white/20 bg-white/85 backdrop-blur-xl shadow-2xl shadow-slate-200/20 px-5 py-5">
+          <div className="flex flex-col xl:flex-row justify-between items-start xl:items-end gap-8">
+            <div>
+              <h2 className={`font-bold tracking-widest uppercase text-sm mb-4 ${type === 'rent' ? 'text-emerald-700' : 'text-red-700'}`}>
+                {type === 'rent' ? 'Available for Let' : 'Properties for Sale'}
+              </h2>
+              <h3 className="text-4xl font-extrabold text-slate-900">
+                {type === 'rent' ? 'Featured Rentals' : 'Investment Opportunities'}
+              </h3>
             </div>
+          
+            {/* Filters */}
+            <div className="flex flex-wrap gap-3">
+              <div className="flex items-center bg-slate-100 rounded-xl px-3 py-2">
+                <Navigation size={16} className="text-slate-500 mr-2" />
+                <select 
+                  className="bg-transparent text-sm font-semibold focus:outline-none"
+                  value={filters.sortBy}
+                  onChange={(e) => setFilters(prev => ({ ...prev, sortBy: e.target.value }))}
+                >
+                  <option value="default">Sort By</option>
+                  <option value="near-me" disabled={!userLocation}>Near Me</option>
+                  <option value="price-low">Price: Low to High</option>
+                  <option value="price-high">Price: High to Low</option>
+                </select>
+              </div>
 
             <div className="flex items-center bg-slate-100 rounded-xl px-3 py-2">
               <Filter size={16} className="text-slate-500 mr-2" />
@@ -1521,14 +2179,15 @@ const Listings = ({
                 <Bed size={16} className="text-slate-500 mr-2" />
                 <select 
                   className="bg-transparent text-sm font-semibold focus:outline-none"
-                  value={filters.bedrooms}
-                  onChange={(e) => setFilters(prev => ({ ...prev, bedrooms: e.target.value }))}
+                  value={filters.unitType}
+                  onChange={(e) => setFilters(prev => ({ ...prev, unitType: e.target.value as RentUnitFilter }))}
                 >
-                  <option value="all">All Bedrooms</option>
-                  <option value="0">Bedsitter</option>
-                  <option value="1">1 Bedroom</option>
-                  <option value="2">2 Bedrooms</option>
-                  <option value="3+">3+ Bedrooms</option>
+                  <option value="all">All Unit Types</option>
+                  <option value="single-room">Single Room</option>
+                  <option value="bedsitter">Bedsitter</option>
+                  <option value="1-bedroom">1 Bedroom</option>
+                  <option value="2-bedroom">2 Bedrooms</option>
+                  <option value="hostel">Hostel</option>
                 </select>
               </div>
             )}
@@ -1615,8 +2274,94 @@ const Listings = ({
           </div>
         </div>
 
+        {type === 'rent' && (
+          <div className="mt-6 rounded-[2rem] border border-emerald-100 bg-white/85 backdrop-blur-xl p-4 shadow-xl shadow-emerald-950/5">
+            <button
+              type="button"
+              onClick={() => setShowUnitTypes((prev) => !prev)}
+              className="flex w-full items-center justify-between gap-4 text-left"
+              aria-expanded={showUnitTypes}
+              aria-controls="unit-types-panel"
+            >
+              <div>
+                <p className="text-xs font-black uppercase tracking-[0.35em] text-emerald-700">Unit Types</p>
+                <p className="text-sm text-slate-500">Jump straight to the most searched rental formats.</p>
+              </div>
+              <div className="flex items-center gap-3 text-sm font-bold text-slate-600">
+                <span>{showUnitTypes ? 'Hide' : 'Show'}</span>
+                <motion.span
+                  animate={{ rotate: showUnitTypes ? 180 : 0 }}
+                  transition={{ duration: 0.2 }}
+                  className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-slate-100 text-slate-700"
+                >
+                  <ChevronDown size={18} />
+                </motion.span>
+              </div>
+            </button>
+            <AnimatePresence initial={false}>
+              {showUnitTypes && (
+                <motion.div
+                  id="unit-types-panel"
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: 'auto' }}
+                  exit={{ opacity: 0, height: 0 }}
+                  transition={{ duration: 0.25, ease: 'easeInOut' }}
+                  className="overflow-hidden"
+                >
+                  <div className="pt-4">
+                    <div className="flex items-center justify-end gap-4 mb-4">
+                      <button
+                        type="button"
+                        onClick={() => setFilters(prev => ({ ...prev, unitType: 'all', priceRange: 'all' }))}
+                        className="text-sm font-bold text-slate-500 hover:text-emerald-700 transition-colors"
+                      >
+                        Reset focus
+                      </button>
+                    </div>
+
+                    <div className="flex gap-3 overflow-x-auto pb-1 scrollbar-hide">
+                      {unitTypeStats.map((option, index) => {
+                        const isActive = filters.unitType === option.value;
+                        return (
+                          <motion.button
+                            key={option.value}
+                            type="button"
+                            initial={{ opacity: 0, y: 14 }}
+                            whileInView={{ opacity: 1, y: 0 }}
+                            viewport={{ once: true }}
+                            transition={{ duration: 0.35, delay: index * 0.04 }}
+                            whileHover={{ y: -3 }}
+                            whileTap={{ scale: 0.98 }}
+                            onClick={() => handleUnitTypeSelect(option)}
+                            className={`min-w-[160px] rounded-[1.4rem] px-5 py-4 text-left border transition-all ${
+                              isActive
+                                ? 'bg-emerald-700 text-white border-emerald-700 shadow-xl shadow-emerald-700/20'
+                                : 'bg-slate-50 text-slate-800 border-slate-100 hover:border-emerald-200 hover:bg-emerald-50/70'
+                            }`}
+                          >
+                            <div className="text-[10px] font-black uppercase tracking-[0.3em] opacity-70 mb-2">
+                              {option.value === 'all' ? 'Browse all' : 'Rental unit'}
+                            </div>
+                            <div className="text-lg font-extrabold leading-tight">{option.label}</div>
+                            <div className={`mt-3 flex items-center justify-between text-xs font-bold ${isActive ? 'text-white/80' : 'text-slate-500'}`}>
+                              <span>{option.value === 'all' ? 'All price bands' : 'Flexible pricing'}</span>
+                              <span className={`rounded-full px-2.5 py-1 ${isActive ? 'bg-white/15' : 'bg-white'}`}>
+                                {option.count}
+                              </span>
+                            </div>
+                          </motion.button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+        )}
+        </div>
         {filteredProperties.length > 0 ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
+          <div className="mt-10 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
             {filteredProperties.map((item) => (
               <motion.div 
                 key={item.id}
@@ -1738,10 +2483,10 @@ const Listings = ({
           <div className="text-center py-20 bg-slate-50 rounded-3xl border-2 border-dashed border-slate-200">
             <p className="text-slate-500 font-medium">No properties match your filters.</p>
             <button 
-              onClick={() => setFilters({ priceRange: 'all', bedrooms: 'all', location: 'all', propertyType: 'all', sortBy: 'default', amenities: [], status: 'all' })}
-              className="mt-4 text-emerald-700 font-bold hover:underline"
-            >
-              Clear all filters
+            onClick={() => setFilters({ priceRange: 'all', unitType: 'all', bedrooms: 'all', location: 'all', propertyType: 'all', sortBy: 'default', amenities: [], status: 'all' })}
+            className="mt-4 text-emerald-700 font-bold hover:underline"
+          >
+            Clear all filters
             </button>
           </div>
         )}
@@ -1751,6 +2496,8 @@ const Listings = ({
 };
 
 const Office = ({ config }: { config: SiteConfig }) => {
+  const headingStyle = { fontFamily: config.headingFontFamily, color: config.headingTextColor };
+  const bodyStyle = { fontFamily: config.bodyFontFamily, color: config.bodyTextColor };
   return (
     <section id="office" className="py-24 bg-white overflow-hidden relative">
       {/* Background Image with Overlay */}
@@ -1777,10 +2524,10 @@ const Office = ({ config }: { config: SiteConfig }) => {
               <MapPin size={16} className="mr-2" />
               Visit Our Office
             </div>
-            <h2 className="text-4xl md:text-5xl font-extrabold text-slate-900 leading-tight">
+            <h2 className="text-4xl md:text-5xl font-extrabold text-slate-900 leading-tight" style={headingStyle}>
               {config.siteName} Plaza, <span className="text-emerald-600">{config.contactAddress}</span>
             </h2>
-            <p className="text-slate-600 text-lg leading-relaxed">
+            <p className="text-black text-lg leading-relaxed" style={bodyStyle}>
               Our headquarters is located at {config.contactAddress}. We welcome you to visit us for a one-on-one consultation regarding property management, construction, or real estate investment.
             </p>
             
@@ -1790,8 +2537,8 @@ const Office = ({ config }: { config: SiteConfig }) => {
                   <MapPin size={24} />
                 </div>
                 <div>
-                  <h4 className="font-bold text-slate-900">Address</h4>
-                  <p className="text-slate-600">{config.contactAddress}</p>
+                  <h4 className="font-bold text-slate-900" style={headingStyle}>Address</h4>
+                  <p className="text-black" style={bodyStyle}>{config.contactAddress}</p>
                 </div>
               </div>
               
@@ -1800,8 +2547,8 @@ const Office = ({ config }: { config: SiteConfig }) => {
                   <Clock size={24} />
                 </div>
                 <div>
-                  <h4 className="font-bold text-slate-900">Business Hours</h4>
-                  <p className="text-slate-600">{config.officeWorkingHours}</p>
+                  <h4 className="font-bold text-slate-900" style={headingStyle}>Business Hours</h4>
+                  <p className="text-black" style={bodyStyle}>{config.officeWorkingHours}</p>
                 </div>
               </div>
             </div>
@@ -2058,7 +2805,7 @@ const Contact = ({ initialService, config }: { initialService?: string, config: 
 
 const Footer = ({ config }: { config: SiteConfig }) => {
   return (
-    <footer className="bg-slate-950 text-white pt-20 pb-10 relative overflow-hidden">
+    <footer className="bg-slate-950 text-white pt-20 pb-10 relative overflow-hidden" style={{ color: config.footerTextColor }}>
       {/* Background Image with Overlay */}
       <div className="absolute inset-0 z-0">
         <img 
@@ -2078,7 +2825,7 @@ const Footer = ({ config }: { config: SiteConfig }) => {
               <span className="text-emerald-500">{config.siteName}</span>
               <span className="text-red-500 ml-1">{config.siteNameSecondary}</span>
             </div>
-            <p className="text-slate-400 leading-relaxed mb-8">
+            <p className="text-inherit leading-relaxed mb-8">
               {config.siteDescription}
             </p>
             <div className="flex space-x-4">
@@ -2096,18 +2843,18 @@ const Footer = ({ config }: { config: SiteConfig }) => {
 
           <div>
             <h5 className="text-lg font-bold mb-6">Quick Links</h5>
-            <ul className="space-y-4 text-slate-400">
-              <li><a href="#home" className="hover:text-emerald-400 transition-colors">Home</a></li>
-              <li><a href="#services" className="hover:text-emerald-400 transition-colors">Our Services</a></li>
-              <li><a href="#rentals" className="hover:text-emerald-400 transition-colors">Rental Listings</a></li>
-              <li><a href="#sales" className="hover:text-emerald-400 transition-colors">Plots for Sale</a></li>
-              <li><a href="#contact" className="hover:text-emerald-400 transition-colors">Contact Us</a></li>
+            <ul className="space-y-4 text-inherit">
+              <li><a href="#home" className="hover:text-emerald-600 transition-colors">Home</a></li>
+              <li><a href="#services" className="hover:text-emerald-600 transition-colors">Our Services</a></li>
+              <li><a href="#rentals" className="hover:text-emerald-600 transition-colors">Rental Listings</a></li>
+              <li><a href="#sales" className="hover:text-emerald-600 transition-colors">Plots for Sale</a></li>
+              <li><a href="#contact" className="hover:text-emerald-600 transition-colors">Contact Us</a></li>
             </ul>
           </div>
 
           <div>
             <h5 className="text-lg font-bold mb-6">Services</h5>
-            <ul className="space-y-4 text-slate-400">
+            <ul className="space-y-4 text-inherit">
               {config.services.map(s => (
                 <li key={s.id}>{s.title}</li>
               ))}
@@ -2116,12 +2863,12 @@ const Footer = ({ config }: { config: SiteConfig }) => {
 
           <div>
             <h5 className="text-lg font-bold mb-6">Newsletter</h5>
-            <p className="text-slate-400 mb-6">Subscribe to get the latest property listings and investment tips.</p>
+            <p className="text-inherit mb-6">Subscribe to get the latest property listings and investment tips.</p>
             <div className="flex">
               <input 
                 type="email" 
                 placeholder="Email address" 
-                className="bg-white/5 border border-white/10 px-4 py-3 rounded-l-xl focus:outline-none focus:ring-1 focus:ring-emerald-500 w-full"
+                className="bg-white border border-slate-200 px-4 py-3 rounded-l-xl focus:outline-none focus:ring-1 focus:ring-emerald-500 w-full text-blue-950 placeholder:text-blue-900/60"
               />
               <button className="bg-emerald-600 px-4 py-3 rounded-r-xl hover:bg-emerald-700 transition-all">
                 Join
@@ -2130,20 +2877,20 @@ const Footer = ({ config }: { config: SiteConfig }) => {
           </div>
         </div>
 
-        <div className="pt-8 border-t border-white/5 flex flex-col md:flex-row items-center justify-between gap-6 text-slate-500 text-sm">
+        <div className="pt-8 border-t border-slate-200 flex flex-col md:flex-row items-center justify-between gap-6 text-inherit text-sm">
           <div className="flex flex-col sm:flex-row sm:items-center sm:gap-4">
             <p>&copy; {new Date().getFullYear()} {config.siteName} {config.siteNameSecondary}. All rights reserved.</p>
             <button
               type="button"
-              className="text-emerald-300 hover:text-white text-sm underline underline-offset-4"
+              className="text-emerald-700 hover:text-emerald-900 text-sm underline underline-offset-4"
               onClick={() => window.dispatchEvent(new CustomEvent('open-admin-login'))}
             >
               Admin
             </button>
           </div>
           <div className="flex items-center gap-3 group">
-            <span className="text-slate-600">Developed by</span>
-            <div className="flex items-center gap-2 bg-white/5 px-3 py-1.5 rounded-full hover:bg-white/10 transition-all border border-white/5">
+            <span className="text-inherit">Developed by</span>
+            <div className="flex items-center gap-2 bg-white px-3 py-1.5 rounded-full hover:bg-slate-50 transition-all border border-slate-200">
               <div className="w-6 h-6 bg-white rounded-full flex items-center justify-center p-1">
                 <svg viewBox="0 0 100 100" className="w-full h-full">
                   <circle cx="50" cy="50" r="45" fill="none" stroke="#000" strokeWidth="2" />
@@ -2154,8 +2901,8 @@ const Footer = ({ config }: { config: SiteConfig }) => {
                 </svg>
               </div>
               <div className="flex flex-col leading-none">
-                <span className="text-white font-black tracking-tighter text-xs">TRACE</span>
-                <span className="text-[6px] text-slate-400 uppercase tracking-[0.2em]">Technologies</span>
+                <span className="text-inherit font-black tracking-tighter text-xs">TRACE</span>
+                <span className="text-[6px] text-inherit uppercase tracking-[0.2em]">Technologies</span>
               </div>
             </div>
           </div>
@@ -2361,6 +3108,7 @@ const AdminPanel = ({
   onSaveSettings,
   onSaveProperty,
   onUploadVideo,
+  onUploadPropertyImage,
   onUploadBackgroundImage,
   onChangePassword,
   onLogout,
@@ -2389,6 +3137,7 @@ const AdminPanel = ({
   onSaveSettings: () => Promise<void>;
   onSaveProperty: (property: Property) => Promise<void>;
   onUploadVideo: (propertyId: string, file: File | null) => Promise<void>;
+  onUploadPropertyImage: (propertyId: string, file: File | null, slot: 'main' | 'gallery') => Promise<void>;
   onUploadBackgroundImage: (key: string, file: File | null) => Promise<void>;
   onChangePassword: (currentPassword: string, newPassword: string) => Promise<void>;
   onLogout: () => void;
@@ -2414,15 +3163,62 @@ const AdminPanel = ({
   const [showAddProperty, setShowAddProperty] = useState(false);
   const [mapLocation, setMapLocation] = useState('');
   const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(null);
-  const [bgUploadTarget, setBgUploadTarget] = useState<'heroBgImage' | 'servicesBgImage' | 'officeBgImage' | 'testimonialsBgImage' | 'rentalsBgImage' | 'salesBgImage' | 'contactBgImage' | 'footerBgImage'>('heroBgImage');
+  const [bgUploadTarget, setBgUploadTarget] = useState<'heroBgImage' | 'servicesBgImage' | 'siteLogo' | 'appIcon' | 'officeBgImage' | 'testimonialsBgImage' | 'rentalsBgImage' | 'salesBgImage' | 'contactBgImage' | 'footerBgImage'>('heroBgImage');
   const [bgUploadFile, setBgUploadFile] = useState<File | null>(null);
   const [isUploadingBgImage, setIsUploadingBgImage] = useState(false);
   const [bgUploadError, setBgUploadError] = useState<string | null>(null);
   const [bgUploadSuccess, setBgUploadSuccess] = useState<string | null>(null);
+  const [mainPropertyImageFile, setMainPropertyImageFile] = useState<File | null>(null);
+  const [galleryPropertyImages, setGalleryPropertyImages] = useState<File[]>([]);
+  const [isUploadingPropertyImage, setIsUploadingPropertyImage] = useState(false);
+  const [propertyImageUploadError, setPropertyImageUploadError] = useState<string | null>(null);
 
   useEffect(() => {
     setLocalSettings(settingsDraft);
   }, [settingsDraft]);
+
+  const rentalPriceBands = localSettings.rentalPriceBands ?? [];
+
+  const updateRentalPriceBands = (nextBands: RentalPriceBand[]) => {
+    setLocalSettings({ ...localSettings, rentalPriceBands: nextBands });
+    onSettingsChange({ rentalPriceBands: nextBands });
+  };
+
+  const updateRentalPriceBand = (bandId: string, updates: Partial<RentalPriceBand>) => {
+    const nextBands = rentalPriceBands.map((band) => band.id === bandId ? { ...band, ...updates } : band);
+    updateRentalPriceBands(nextBands);
+  };
+
+  const addRentalPriceBand = () => {
+    updateRentalPriceBands([
+      ...rentalPriceBands,
+      createRentalPriceBand({
+        unitType: 'single-room',
+        location: 'all',
+        label: 'New band',
+        displayPrice: '',
+        priceRange: '',
+      }),
+    ]);
+  };
+
+  const addRentalPriceBandPreset = (unitType: Exclude<RentUnitFilter, 'all'>) => {
+    const existingCount = rentalPriceBands.filter((band) => band.unitType === unitType).length + 1;
+    updateRentalPriceBands([
+      ...rentalPriceBands,
+      createRentalPriceBand({
+        unitType,
+        label: `${RENTAL_UNIT_LABELS[unitType]} ${existingCount}`,
+        location: 'all',
+        displayPrice: '',
+        priceRange: '',
+      }),
+    ]);
+  };
+
+  const removeRentalPriceBand = (bandId: string) => {
+    updateRentalPriceBands(rentalPriceBands.filter((band) => band.id !== bandId));
+  };
 
   const uploadSelectedBackgroundImage = async () => {
     setBgUploadError(null);
@@ -2443,6 +3239,40 @@ const AdminPanel = ({
       setBgUploadError(error instanceof Error ? error.message : 'Unable to upload background image.');
     } finally {
       setIsUploadingBgImage(false);
+    }
+  };
+
+  const uploadSelectedPropertyImage = async (slot: 'main' | 'gallery') => {
+    if (!propertyDraft) {
+      setPropertyImageUploadError('Select a property first.');
+      return;
+    }
+
+    setPropertyImageUploadError(null);
+    setIsUploadingPropertyImage(true);
+    try {
+      if (slot === 'main') {
+        if (!mainPropertyImageFile) {
+          setPropertyImageUploadError('Please select a main image file before uploading.');
+          return;
+        }
+        await onUploadPropertyImage(propertyDraft.id, mainPropertyImageFile, 'main');
+        setMainPropertyImageFile(null);
+      } else {
+        if (galleryPropertyImages.length === 0) {
+          setPropertyImageUploadError('Please select one or more gallery files before uploading.');
+          return;
+        }
+        for (const file of galleryPropertyImages) {
+          await onUploadPropertyImage(propertyDraft.id, file, 'gallery');
+        }
+        setGalleryPropertyImages([]);
+      }
+    } catch (error) {
+      console.error(error);
+      setPropertyImageUploadError(error instanceof Error ? error.message : 'Unable to upload property image.');
+    } finally {
+      setIsUploadingPropertyImage(false);
     }
   };
 
@@ -2474,7 +3304,57 @@ const AdminPanel = ({
                 <CheckCircle2 className="text-emerald-600" size={28} />
                 Site Settings
               </h3>
-              <div className="grid grid-cols-1 gap-4">
+                <div className="grid grid-cols-1 gap-4">
+                <div className="rounded-3xl border border-slate-200 bg-slate-50 p-5 space-y-4">
+                  <div>
+                    <h4 className="text-lg font-bold text-slate-900">Branding</h4>
+                    <p className="text-sm text-slate-500">Upload or paste the logo and app icon used across the site and install prompt.</p>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-semibold text-slate-600 mb-2">Site Logo URL</label>
+                      <input
+                        value={localSettings.siteLogo || ''}
+                        onChange={(e) => {
+                          setLocalSettings({ ...localSettings, siteLogo: e.target.value });
+                          onSettingsChange({ siteLogo: e.target.value });
+                        }}
+                        placeholder="https://example.com/logo.png"
+                        className="w-full rounded-2xl border border-slate-200 px-4 py-3"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-semibold text-slate-600 mb-2">App Icon URL</label>
+                      <input
+                        value={localSettings.appIcon || ''}
+                        onChange={(e) => {
+                          setLocalSettings({ ...localSettings, appIcon: e.target.value });
+                          onSettingsChange({ appIcon: e.target.value });
+                        }}
+                        placeholder="https://example.com/icon.svg"
+                        className="w-full rounded-2xl border border-slate-200 px-4 py-3"
+                      />
+                    </div>
+                    <div className="md:col-span-2 grid grid-cols-2 gap-4">
+                      <div className="rounded-2xl border border-slate-200 bg-white p-3">
+                        <p className="text-xs font-bold uppercase tracking-[0.25em] text-slate-400 mb-2">Logo Preview</p>
+                        {localSettings.siteLogo ? (
+                          <img src={localSettings.siteLogo} alt="Logo preview" className="h-20 w-full object-contain" referrerPolicy="no-referrer" />
+                        ) : (
+                          <div className="h-20 flex items-center justify-center text-sm text-slate-400">No logo set</div>
+                        )}
+                      </div>
+                      <div className="rounded-2xl border border-slate-200 bg-white p-3">
+                        <p className="text-xs font-bold uppercase tracking-[0.25em] text-slate-400 mb-2">App Icon Preview</p>
+                        {localSettings.appIcon ? (
+                          <img src={localSettings.appIcon} alt="App icon preview" className="h-20 w-full object-contain" referrerPolicy="no-referrer" />
+                        ) : (
+                          <div className="h-20 flex items-center justify-center text-sm text-slate-400">No icon set</div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
                 <div>
                   <label className="block text-sm font-semibold text-slate-600 mb-2">Hero Title</label>
                   <input
@@ -2496,6 +3376,80 @@ const AdminPanel = ({
                     }}
                     className="w-full rounded-2xl border border-slate-200 px-4 py-3 h-28"
                   />
+                </div>
+                <div className="rounded-3xl border border-slate-200 bg-slate-50 p-5 space-y-4">
+                  <div>
+                    <h4 className="text-lg font-bold text-slate-900">Typography</h4>
+                    <p className="text-sm text-slate-500">Set the site-wide fonts and text colors used across the public pages.</p>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-semibold text-slate-600 mb-2">Body Font</label>
+                      <select
+                        value={localSettings.bodyFontFamily || INITIAL_CONFIG.bodyFontFamily}
+                        onChange={(e) => {
+                          setLocalSettings({ ...localSettings, bodyFontFamily: e.target.value });
+                          onSettingsChange({ bodyFontFamily: e.target.value });
+                        }}
+                        className="w-full rounded-2xl border border-slate-200 px-4 py-3 bg-white"
+                      >
+                        {FONT_PRESETS.map((font) => (
+                          <option key={font.value} value={font.value}>{font.label}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-semibold text-slate-600 mb-2">Heading Font</label>
+                      <select
+                        value={localSettings.headingFontFamily || INITIAL_CONFIG.headingFontFamily}
+                        onChange={(e) => {
+                          setLocalSettings({ ...localSettings, headingFontFamily: e.target.value });
+                          onSettingsChange({ headingFontFamily: e.target.value });
+                        }}
+                        className="w-full rounded-2xl border border-slate-200 px-4 py-3 bg-white"
+                      >
+                        {FONT_PRESETS.map((font) => (
+                          <option key={font.value} value={font.value}>{font.label}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-semibold text-slate-600 mb-2">Body Text Color</label>
+                      <input
+                        type="color"
+                        value={localSettings.bodyTextColor || INITIAL_CONFIG.bodyTextColor}
+                        onChange={(e) => {
+                          setLocalSettings({ ...localSettings, bodyTextColor: e.target.value });
+                          onSettingsChange({ bodyTextColor: e.target.value });
+                        }}
+                        className="h-12 w-full rounded-2xl border border-slate-200 bg-white p-2"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-semibold text-slate-600 mb-2">Heading Text Color</label>
+                      <input
+                        type="color"
+                        value={localSettings.headingTextColor || INITIAL_CONFIG.headingTextColor}
+                        onChange={(e) => {
+                          setLocalSettings({ ...localSettings, headingTextColor: e.target.value });
+                          onSettingsChange({ headingTextColor: e.target.value });
+                        }}
+                        className="h-12 w-full rounded-2xl border border-slate-200 bg-white p-2"
+                      />
+                    </div>
+                    <div className="md:col-span-2">
+                      <label className="block text-sm font-semibold text-slate-600 mb-2">Footer Text Color</label>
+                      <input
+                        type="color"
+                        value={localSettings.footerTextColor || INITIAL_CONFIG.footerTextColor}
+                        onChange={(e) => {
+                          setLocalSettings({ ...localSettings, footerTextColor: e.target.value });
+                          onSettingsChange({ footerTextColor: e.target.value });
+                        }}
+                        className="h-12 w-full rounded-2xl border border-slate-200 bg-white p-2"
+                      />
+                    </div>
+                  </div>
                 </div>
                 <div>
                   <label className="block text-sm font-semibold text-slate-600 mb-2">Contact Phone</label>
@@ -2649,9 +3603,11 @@ const AdminPanel = ({
                           onChange={(e) => setBgUploadTarget(e.target.value as any)}
                           className="w-full rounded-2xl border border-slate-200 px-4 py-3"
                         >
-                          <option value="heroBgImage">Hero</option>
-                          <option value="servicesBgImage">Services</option>
-                          <option value="officeBgImage">Office</option>
+                      <option value="heroBgImage">Hero</option>
+                      <option value="servicesBgImage">Services</option>
+                      <option value="siteLogo">Site Logo</option>
+                      <option value="appIcon">App Icon</option>
+                      <option value="officeBgImage">Office</option>
                           <option value="testimonialsBgImage">Testimonials</option>
                           <option value="rentalsBgImage">Rentals</option>
                           <option value="salesBgImage">Sales</option>
@@ -2707,6 +3663,183 @@ const AdminPanel = ({
                     }}
                     className="w-full rounded-2xl border border-slate-200 px-4 py-3"
                   />
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-semibold text-slate-600 mb-2">Single Room Price Range</label>
+                    <input
+                      value={localSettings.singleRoomPriceRange || 'Ksh 3k - 8k'}
+                      onChange={(e) => {
+                        setLocalSettings({ ...localSettings, singleRoomPriceRange: e.target.value });
+                        onSettingsChange({ singleRoomPriceRange: e.target.value });
+                      }}
+                      placeholder="Ksh 3k - 8k"
+                      className="w-full rounded-2xl border border-slate-200 px-4 py-3"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold text-slate-600 mb-2">Bedsitter Price Range</label>
+                    <input
+                      value={localSettings.bedsitterPriceRange || 'Ksh 6k - 12k'}
+                      onChange={(e) => {
+                        setLocalSettings({ ...localSettings, bedsitterPriceRange: e.target.value });
+                        onSettingsChange({ bedsitterPriceRange: e.target.value });
+                      }}
+                      placeholder="Ksh 6k - 12k"
+                      className="w-full rounded-2xl border border-slate-200 px-4 py-3"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold text-slate-600 mb-2">1 Bedroom Price Range</label>
+                    <input
+                      value={localSettings.oneBedroomPriceRange || 'Ksh 10k - 20k'}
+                      onChange={(e) => {
+                        setLocalSettings({ ...localSettings, oneBedroomPriceRange: e.target.value });
+                        onSettingsChange({ oneBedroomPriceRange: e.target.value });
+                      }}
+                      placeholder="Ksh 10k - 20k"
+                      className="w-full rounded-2xl border border-slate-200 px-4 py-3"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold text-slate-600 mb-2">2 Bedroom Price Range</label>
+                    <input
+                      value={localSettings.twoBedroomPriceRange || 'Ksh 18k - 35k'}
+                      onChange={(e) => {
+                        setLocalSettings({ ...localSettings, twoBedroomPriceRange: e.target.value });
+                        onSettingsChange({ twoBedroomPriceRange: e.target.value });
+                      }}
+                      placeholder="Ksh 18k - 35k"
+                      className="w-full rounded-2xl border border-slate-200 px-4 py-3"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold text-slate-600 mb-2">Hostel Price Range</label>
+                    <input
+                      value={localSettings.hostelPriceRange || 'Ksh 2k - 6k'}
+                      onChange={(e) => {
+                        setLocalSettings({ ...localSettings, hostelPriceRange: e.target.value });
+                        onSettingsChange({ hostelPriceRange: e.target.value });
+                      }}
+                      placeholder="Ksh 2k - 6k"
+                      className="w-full rounded-2xl border border-slate-200 px-4 py-3"
+                    />
+                  </div>
+                </div>
+                <div className="mt-4 p-6 rounded-3xl border border-slate-200 bg-slate-50">
+                  <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between mb-4">
+                    <div>
+                      <h4 className="text-lg font-bold text-slate-900">Rental Price Bands</h4>
+                      <p className="text-sm text-slate-500">Add more than one band for the same unit type when prices change by location.</p>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {(['single-room', 'bedsitter', '1-bedroom', '2-bedroom', 'hostel'] as Array<Exclude<RentUnitFilter, 'all'>>).map((unitType) => (
+                        <button
+                          key={unitType}
+                          type="button"
+                          onClick={() => addRentalPriceBandPreset(unitType)}
+                          className="rounded-full border border-emerald-200 bg-white px-4 py-2 text-xs font-bold uppercase tracking-widest text-slate-700 hover:border-emerald-400 hover:text-emerald-700 transition-all"
+                        >
+                          Add {RENTAL_UNIT_LABELS[unitType]}
+                        </button>
+                      ))}
+                      <button
+                        type="button"
+                        onClick={addRentalPriceBand}
+                        className="inline-flex items-center gap-2 rounded-2xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-emerald-700 transition-all"
+                      >
+                        <Plus size={16} />
+                        Custom Band
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="space-y-4">
+                    {rentalPriceBands.length === 0 ? (
+                      <div className="rounded-2xl border border-dashed border-slate-300 bg-white px-4 py-5 text-sm text-slate-500">
+                        No custom bands yet. Add one for each area you manage.
+                      </div>
+                    ) : null}
+                    {rentalPriceBands.map((band, index) => (
+                      <div key={band.id} className="rounded-[1.5rem] border border-slate-200 bg-white p-4 shadow-sm">
+                        <div className="flex items-center justify-between gap-4 mb-4">
+                          <div>
+                            <p className="text-xs font-black uppercase tracking-[0.3em] text-slate-400">Band {index + 1}</p>
+                            <p className="text-sm text-slate-500">This band will appear in the hero and filter rail.</p>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => removeRentalPriceBand(band.id)}
+                            className="rounded-2xl border border-rose-200 bg-rose-50 px-3 py-2 text-sm font-semibold text-rose-700 hover:bg-rose-100 transition-all"
+                          >
+                            Remove
+                          </button>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div>
+                            <label className="block text-sm font-semibold text-slate-600 mb-2">Label</label>
+                            <input
+                              value={band.label}
+                              onChange={(e) => updateRentalPriceBand(band.id, { label: e.target.value })}
+                              placeholder="Kilimani 1 Bedrooms"
+                              className="w-full rounded-2xl border border-slate-200 px-4 py-3"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-sm font-semibold text-slate-600 mb-2">Location</label>
+                            <input
+                              value={band.location}
+                              onChange={(e) => updateRentalPriceBand(band.id, { location: e.target.value })}
+                              placeholder="Kilimani / Ruaka / Ongata Rongai"
+                              className="w-full rounded-2xl border border-slate-200 px-4 py-3"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-sm font-semibold text-slate-600 mb-2">Unit Type</label>
+                            <select
+                              value={band.unitType}
+                              onChange={(e) => updateRentalPriceBand(band.id, { unitType: e.target.value as Exclude<RentUnitFilter, 'all'> })}
+                              className="w-full rounded-2xl border border-slate-200 px-4 py-3 bg-white"
+                            >
+                              <option value="single-room">Single Room</option>
+                              <option value="bedsitter">Bedsitter</option>
+                              <option value="1-bedroom">1 Bedroom</option>
+                              <option value="2-bedroom">2 Bedroom</option>
+                              <option value="hostel">Hostel</option>
+                            </select>
+                          </div>
+                          <div>
+                            <label className="block text-sm font-semibold text-slate-600 mb-2">Price Range</label>
+                            <input
+                              value={band.priceRange}
+                              onChange={(e) => updateRentalPriceBand(band.id, { priceRange: e.target.value })}
+                              placeholder="5000-8000"
+                              className="w-full rounded-2xl border border-slate-200 px-4 py-3"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-sm font-semibold text-slate-600 mb-2">Display Price</label>
+                            <input
+                              value={band.displayPrice}
+                              onChange={(e) => updateRentalPriceBand(band.id, { displayPrice: e.target.value })}
+                              placeholder="Ksh 5k - 8k"
+                              className="w-full rounded-2xl border border-slate-200 px-4 py-3"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-sm font-semibold text-slate-600 mb-2">Band Accent</label>
+                            <input
+                              value={band.tone}
+                              onChange={(e) => updateRentalPriceBand(band.id, { tone: e.target.value })}
+                              placeholder="from-emerald-500/20 to-emerald-700/30"
+                              className="w-full rounded-2xl border border-slate-200 px-4 py-3"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               </div>
               <div className="mt-8 p-6 bg-emerald-50 rounded-2xl border-2 border-emerald-200">
@@ -3072,6 +4205,27 @@ const AdminPanel = ({
                       placeholder="https://..."
                     />
                   </div>
+                  <div className="rounded-3xl border border-slate-200 bg-slate-50 p-4 space-y-4">
+                    <div>
+                      <h4 className="text-lg font-bold text-slate-900">Upload Main Image</h4>
+                      <p className="text-sm text-slate-500">Upload a local file to replace the main property image.</p>
+                    </div>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={(e) => setMainPropertyImageFile(e.target.files?.[0] ?? null)}
+                      className="w-full rounded-2xl border border-slate-200 px-4 py-2 bg-white"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => uploadSelectedPropertyImage('main')}
+                      disabled={isUploadingPropertyImage}
+                      className="w-full bg-emerald-600 text-white py-3 rounded-2xl font-semibold hover:bg-emerald-700 transition-all disabled:opacity-60"
+                    >
+                      {isUploadingPropertyImage ? 'Uploading...' : 'Upload Main Image'}
+                    </button>
+                    {propertyImageUploadError && <p className="text-sm text-rose-500">{propertyImageUploadError}</p>}
+                  </div>
 
                   <div>
                     <label className="block text-sm font-semibold text-slate-600 mb-2">Additional Images (comma-separated URLs)</label>
@@ -3081,6 +4235,27 @@ const AdminPanel = ({
                       className="w-full rounded-2xl border border-slate-200 px-4 py-3 h-20"
                       placeholder="https://image1.jpg, https://image2.jpg"
                     />
+                  </div>
+                  <div className="rounded-3xl border border-slate-200 bg-slate-50 p-4 space-y-4">
+                    <div>
+                      <h4 className="text-lg font-bold text-slate-900">Upload Gallery Images</h4>
+                      <p className="text-sm text-slate-500">Select one or more local files and upload them into the gallery.</p>
+                    </div>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      multiple
+                      onChange={(e) => setGalleryPropertyImages(Array.from(e.target.files ?? []))}
+                      className="w-full rounded-2xl border border-slate-200 px-4 py-2 bg-white"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => uploadSelectedPropertyImage('gallery')}
+                      disabled={isUploadingPropertyImage}
+                      className="w-full bg-slate-900 text-white py-3 rounded-2xl font-semibold hover:bg-slate-800 transition-all disabled:opacity-60"
+                    >
+                      {isUploadingPropertyImage ? 'Uploading...' : 'Upload Gallery Images'}
+                    </button>
                   </div>
 
                   {/* Amenities */}
@@ -3254,6 +4429,8 @@ const AdminPanel = ({
 };
 
 const Testimonials = ({ config }: { config: SiteConfig }) => {
+  const headingStyle = { fontFamily: config.headingFontFamily, color: config.headingTextColor };
+  const bodyStyle = { fontFamily: config.bodyFontFamily, color: config.bodyTextColor };
   const [testimonials, setTestimonials] = useState<Testimonial[]>(config.testimonials);
   const [newTestimonial, setNewTestimonial] = useState({ name: "", content: "", role: "Client" });
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -3318,8 +4495,8 @@ const Testimonials = ({ config }: { config: SiteConfig }) => {
       
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
         <div className="text-center mb-16">
-          <h2 className="text-4xl font-extrabold text-slate-900 mb-4">Client Testimonials</h2>
-          <p className="text-slate-500 max-w-2xl mx-auto">Hear from our satisfied clients about their experiences with {config.siteName} {config.siteNameSecondary}.</p>
+          <h2 className="text-4xl font-extrabold text-slate-900 mb-4" style={headingStyle}>Client Testimonials</h2>
+          <p className="text-slate-500 max-w-2xl mx-auto" style={bodyStyle}>Hear from our satisfied clients about their experiences with {config.siteName} {config.siteNameSecondary}.</p>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-16">
@@ -3334,11 +4511,11 @@ const Testimonials = ({ config }: { config: SiteConfig }) => {
               <div className="flex items-center gap-4 mb-6">
                 <img src={t.photo} alt={t.name} className="w-14 h-14 rounded-full object-cover border-2 border-emerald-100" />
                 <div>
-                  <h4 className="font-bold text-slate-900">{t.name}</h4>
-                  <p className="text-sm text-slate-500">{t.role}</p>
+                  <h4 className="font-bold text-slate-900" style={headingStyle}>{t.name}</h4>
+                  <p className="text-sm text-slate-500" style={bodyStyle}>{t.role}</p>
                 </div>
               </div>
-              <p className="text-slate-600 italic mb-6 leading-relaxed">"{t.content}"</p>
+              <p className="text-slate-600 italic mb-6 leading-relaxed" style={bodyStyle}>"{t.content}"</p>
               <div className="flex text-amber-400">
                 {[...Array(t.rating)].map((_, i) => (
                   <CheckCircle2 key={i} size={16} fill="currentColor" />
@@ -3353,8 +4530,8 @@ const Testimonials = ({ config }: { config: SiteConfig }) => {
           <div className="absolute top-0 right-0 w-64 h-64 bg-emerald-800 rounded-full -translate-y-1/2 translate-x-1/2 blur-3xl opacity-50"></div>
           <div className="relative z-10 flex flex-col lg:flex-row items-center justify-between gap-12">
             <div className="max-w-md">
-              <h3 className="text-3xl font-bold mb-4">Share Your Experience</h3>
-              <p className="text-emerald-100/80">We value your feedback! Let us know how we've helped you find your perfect home or manage your property.</p>
+              <h3 className="text-3xl font-bold mb-4" style={headingStyle}>Share Your Experience</h3>
+              <p className="text-emerald-100/80" style={bodyStyle}>We value your feedback! Let us know how we've helped you find your perfect home or manage your property.</p>
             </div>
             <form onSubmit={handleSubmit} className="w-full lg:max-w-2xl flex flex-col sm:flex-row gap-4">
               <div className="flex-1 space-y-4">
@@ -3392,6 +4569,7 @@ const Testimonials = ({ config }: { config: SiteConfig }) => {
 
 export default function App() {
   const [searchQuery, setSearchQuery] = useState("");
+  const [heroQuickFilter, setHeroQuickFilter] = useState<{ priceRange: string; unitType: RentUnitFilter; location?: string } | null>(null);
   const [selectedProperty, setSelectedProperty] = useState<Property | null>(null);
   const [comparisonList, setComparisonList] = useState<string[]>([]);
   const [userLocation, setUserLocation] = useState<{ lat: number, lng: number } | null>(null);
@@ -3440,6 +4618,15 @@ export default function App() {
     }
   };
 
+  const handleHeroQuickPick = (pick: HeroQuickPick) => {
+    setHeroQuickFilter({ priceRange: pick.priceRange, unitType: pick.unitType, location: pick.location });
+    setSearchQuery('');
+    const listingsSection = document.getElementById('listings-container');
+    if (listingsSection) {
+      listingsSection.scrollIntoView({ behavior: 'smooth' });
+    }
+  };
+
   const loadAppConfig = useCallback(async () => {
     try {
       const response = await fetch('/api/config');
@@ -3448,8 +4635,9 @@ export default function App() {
       }
       const data = await response.json();
       if (data.config) {
-        setConfig(data.config);
-        setAdminSettingsDraft(data.config);
+        const nextConfig = { ...INITIAL_CONFIG, ...data.config };
+        setConfig(nextConfig);
+        setAdminSettingsDraft(nextConfig);
       }
       if (Array.isArray(data.properties) && data.properties.length > 0) {
         setProperties(data.properties);
@@ -3468,7 +4656,7 @@ export default function App() {
       }
       const data = await response.json();
       if (data.config) {
-        setAdminSettingsDraft(data.config);
+        setAdminSettingsDraft({ ...INITIAL_CONFIG, ...data.config });
       }
       if (Array.isArray(data.properties) && data.properties.length > 0) {
         setProperties(data.properties);
@@ -3482,6 +4670,10 @@ export default function App() {
   useEffect(() => {
     loadAppConfig();
   }, [loadAppConfig]);
+
+  useEffect(() => {
+    return applyInstallManifest(config);
+  }, [config]);
 
   useEffect(() => {
     if (!selectedAdminPropertyId && properties.length > 0) {
@@ -3591,8 +4783,9 @@ export default function App() {
       if (!response.ok) {
         throw new Error(data.error || 'Unable to save settings.');
       }
-      setConfig(data.settings);
-      setAdminSettingsDraft(data.settings);
+      const nextSettings = { ...INITIAL_CONFIG, ...data.settings };
+      setConfig(nextSettings);
+      setAdminSettingsDraft(nextSettings);
     } catch (error) {
       console.error(error);
       setAdminError('Unable to save settings.');
@@ -3771,6 +4964,28 @@ export default function App() {
     }
   };
 
+  const handleUploadPropertyImage = async (propertyId: string, file: File | null, slot: 'main' | 'gallery') => {
+    if (!file) {
+      throw new Error('Please select an image file before uploading.');
+    }
+
+    const formData = new FormData();
+    formData.append('propertyId', propertyId);
+    formData.append('slot', slot);
+    formData.append('image', file);
+    const response = await fetch('/api/admin/upload-property-image', {
+      method: 'POST',
+      body: formData,
+      credentials: 'include',
+    });
+    const data = await response.json();
+    if (!response.ok) {
+      throw new Error(data.error || 'Unable to upload property image.');
+    }
+    setProperties((prev) => prev.map((item) => (item.id === propertyId ? data.property : item)));
+    setAdminPropertyDraft(data.property);
+  };
+
   const handleUploadBackgroundImage = async (key: string, file: File | null) => {
     if (!file) {
       throw new Error('Please select an image file before uploading.');
@@ -3788,8 +5003,9 @@ export default function App() {
     if (!response.ok) {
       throw new Error(data.error || 'Unable to upload image.');
     }
-    setConfig(data.settings);
-    setAdminSettingsDraft(data.settings);
+    const nextSettings = { ...INITIAL_CONFIG, ...data.settings };
+    setConfig(nextSettings);
+    setAdminSettingsDraft(nextSettings);
     return data;
   };
 
@@ -3867,10 +5083,17 @@ export default function App() {
   }, [comparisonList, properties]);
 
   return (
-    <main className="min-h-screen">
+    <main
+      className="min-h-screen"
+      style={{
+        fontFamily: config.bodyFontFamily,
+        color: config.bodyTextColor,
+      }}
+    >
+      <InstallAndStartupOverlay config={config} />
       <SEOData config={config} />
       <Navbar onSearch={setSearchQuery} searchValue={searchQuery} onBookViewing={handleBookViewing} config={config} />
-      <Hero onSearch={setSearchQuery} properties={properties} config={config} />
+      <Hero onSearch={setSearchQuery} onQuickPick={handleHeroQuickPick} properties={properties} config={config} />
       <Services onSelectService={handleSelectService} config={config} />
       <Office config={config} />
       <Testimonials config={config} />
@@ -3885,6 +5108,7 @@ export default function App() {
           onRequestViewing={setViewingRequestProperty}
           onRequestInfo={setInfoRequestProperty}
           config={config}
+          quickFilter={heroQuickFilter}
         />
         <Listings 
           type="sale" 
@@ -3902,7 +5126,7 @@ export default function App() {
       <Contact initialService={selectedService} config={config} />
       <Footer config={config} />
 
-      <AIChatBot properties={properties} />
+      <AIChatBot />
 
       <ComparisonBar 
         count={comparisonList.length} 
@@ -3950,6 +5174,7 @@ export default function App() {
             if (property) await handleSaveProperty(property);
           }}
           onUploadVideo={handleUploadPropertyVideo}
+          onUploadPropertyImage={handleUploadPropertyImage}
           onUploadBackgroundImage={handleUploadBackgroundImage}
           onChangePassword={handleChangeAdminPassword}
           onLogout={handleAdminLogout}

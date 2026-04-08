@@ -7,7 +7,7 @@ interface Message {
   text: string;
 }
 
-export const AIChatBot = ({ properties }: { properties: any[] }) => {
+export const AIChatBot = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [input, setInput] = useState('');
   const [messages, setMessages] = useState<Message[]>([
@@ -34,7 +34,7 @@ export const AIChatBot = ({ properties }: { properties: any[] }) => {
       const response = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: userMessage, properties }),
+        body: JSON.stringify({ message: userMessage }),
       });
 
       const data = await response.json();
