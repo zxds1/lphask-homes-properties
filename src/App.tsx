@@ -160,11 +160,6 @@ interface SiteConfig {
   officeWorkingHours: string;
 }
 
-interface BeforeInstallPromptEvent extends Event {
-  prompt: () => Promise<void>;
-  userChoice: Promise<{ outcome: 'accepted' | 'dismissed'; platform?: string }>;
-}
-
 // --- Data ---
 const INITIAL_CONFIG: SiteConfig = {
   siteName: "LPHASK Homes",
@@ -292,7 +287,6 @@ const InstallAndStartupOverlay = ({ config }: { config: SiteConfig }) => {
   const [showInstall, setShowInstall] = useState(false);
   const [showStartup, setShowStartup] = useState(true);
   const [showFloatingInstall, setShowFloatingInstall] = useState(true);
-  const [installPromptEvent, setInstallPromptEvent] = useState<BeforeInstallPromptEvent | null>(null);
 
   useEffect(() => {
     const showInstallLater = window.setTimeout(() => {
@@ -311,7 +305,6 @@ const InstallAndStartupOverlay = ({ config }: { config: SiteConfig }) => {
 
     const handleBeforeInstallPrompt = (event: Event) => {
       event.preventDefault();
-      setInstallPromptEvent(event as BeforeInstallPromptEvent);
       if (!localStorage.getItem(INSTALL_DISMISSED_KEY)) {
         setShowInstall(true);
       }
@@ -340,33 +333,17 @@ const InstallAndStartupOverlay = ({ config }: { config: SiteConfig }) => {
     };
   }, []);
 
-  const handleInstall = async () => {
-    if (!installPromptEvent) {
-      setShowInstall(false);
-      localStorage.setItem(INSTALL_DISMISSED_KEY, 'true');
-      return;
-    }
-
-    await installPromptEvent.prompt();
-    const choice = await installPromptEvent.userChoice;
-    if (choice.outcome === 'accepted') {
-      localStorage.setItem(INSTALL_DISMISSED_KEY, 'true');
-    }
-    setShowInstall(false);
-    setInstallPromptEvent(null);
-  };
-
-  const handleDismiss = () => {
+  const handlePromptClose = () => {
     setShowInstall(false);
     localStorage.setItem(INSTALL_DISMISSED_KEY, 'true');
   };
 
-  const handleQuickInstall = async () => {
-    if (installPromptEvent) {
-      await handleInstall();
-      return;
-    }
+  const handleDismiss = () => {
+    localStorage.setItem(INSTALL_DISMISSED_KEY, 'true');
+    setShowInstall(false);
+  };
 
+  const handleQuickInstall = () => {
     setShowInstall(true);
   };
 
@@ -480,17 +457,17 @@ const InstallAndStartupOverlay = ({ config }: { config: SiteConfig }) => {
               <div className="mt-5 grid gap-3 sm:grid-cols-2">
                 <button
                   type="button"
-                  onClick={handleInstall}
+                  onClick={handlePromptClose}
                   className="rounded-2xl bg-emerald-500 px-4 py-3 text-sm font-bold text-slate-950 transition hover:bg-emerald-400"
                 >
-                  Install now
+                  Got it
                 </button>
                 <button
                   type="button"
                   onClick={handleDismiss}
                   className="rounded-2xl border border-white/10 px-4 py-3 text-sm font-semibold text-white/80 transition hover:bg-white/5"
                 >
-                  Not now
+                  Close
                 </button>
               </div>
             </motion.div>
@@ -503,14 +480,14 @@ const InstallAndStartupOverlay = ({ config }: { config: SiteConfig }) => {
           <motion.button
             type="button"
             onClick={handleQuickInstall}
-            aria-label="Download app"
+            aria-label="App info"
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 12 }}
             className="fixed bottom-5 right-5 z-[254] inline-flex items-center gap-3 rounded-full border border-emerald-400/30 bg-slate-950/90 px-4 py-3 text-sm font-bold text-white shadow-2xl backdrop-blur-xl transition hover:border-emerald-300 hover:bg-slate-900"
           >
             <Download className="h-4 w-4 text-emerald-300" />
-            <span className="hidden sm:inline">Download app</span>
+            <span className="hidden sm:inline">App info</span>
           </motion.button>
         )}
       </AnimatePresence>
@@ -851,7 +828,7 @@ const Navbar = ({ onSearch, searchValue, onBookViewing, config }: { onSearch: (v
               onClick={() => window.dispatchEvent(new CustomEvent(OPEN_INSTALL_PROMPT_EVENT))}
               className={`text-sm font-semibold rounded-full px-4 py-2 border transition-colors ${scrolled ? 'text-emerald-700 border-emerald-200 bg-emerald-50 hover:bg-emerald-100' : 'text-white border-white/20 bg-white/10 hover:bg-white/20'}`}
             >
-              Download App
+              App Info
             </button>
             <button onClick={onBookViewing} className="bg-emerald-700 text-white px-5 py-2 rounded-full text-sm font-bold hover:bg-emerald-800 transition-all shadow-lg shadow-emerald-700/20">
               Book Viewing
@@ -909,7 +886,7 @@ const Navbar = ({ onSearch, searchValue, onBookViewing, config }: { onSearch: (v
                   }}
                   className="block w-full px-3 py-4 text-base font-medium text-emerald-700 hover:bg-emerald-50 rounded-lg text-left"
                 >
-                  Download App
+                  App Info
                 </button>
               </div>
               <button onClick={onBookViewing} className="w-full mt-4 bg-emerald-700 text-white px-5 py-3 rounded-xl text-base font-bold">
