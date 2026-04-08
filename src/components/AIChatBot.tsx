@@ -61,14 +61,14 @@ export const AIChatBot = () => {
   };
 
   return (
-    <div className="fixed bottom-6 right-6 z-50">
+    <div className="fixed bottom-4 right-4 z-50 sm:bottom-6 sm:right-6">
       <AnimatePresence>
         {isOpen && (
           <motion.div
             initial={{ opacity: 0, y: 20, scale: 0.95 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 20, scale: 0.95 }}
-            className="bg-white rounded-2xl shadow-2xl w-80 sm:w-96 mb-4 overflow-hidden border border-slate-200 flex flex-col h-[500px]"
+            className="mb-4 flex h-[72vh] max-h-[560px] w-[calc(100vw-2rem)] flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl sm:h-[500px] sm:w-96"
             role="dialog"
             aria-modal="true"
             aria-labelledby="ai-chatbot-title"
@@ -148,10 +148,10 @@ export const AIChatBot = () => {
         whileTap={{ scale: 0.95 }}
         onClick={() => setIsOpen(!isOpen)}
         aria-label={isOpen ? 'Close AI chat' : 'Open AI chat'}
-        className="bg-emerald-700 text-white p-4 rounded-full shadow-xl hover:bg-emerald-800 transition-all flex items-center gap-2 group"
+        className="flex items-center gap-2 rounded-full bg-emerald-700 p-3 text-white shadow-xl transition-all hover:bg-emerald-800 sm:p-4 group"
       >
         <MessageSquare size={24} aria-hidden="true" />
-        {!isOpen && <span className="max-w-0 overflow-hidden group-hover:max-w-xs transition-all duration-500 whitespace-nowrap font-medium text-sm">Chat with AI</span>}
+        {!isOpen && <span className="hidden whitespace-nowrap text-sm font-medium sm:inline">Chat with AI</span>}
       </motion.button>
     </div>
   );

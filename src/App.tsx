@@ -806,21 +806,21 @@ const Navbar = ({ onSearch, searchValue, onBookViewing, config }: { onSearch: (v
 
   return (
     <nav className={`fixed w-full z-50 transition-all duration-300 ${scrolled ? "bg-white shadow-md py-2" : "bg-transparent py-4"}`}>
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between items-center">
+      <div className="mx-auto max-w-7xl px-3 sm:px-6 lg:px-8">
+        <div className="flex items-center justify-between gap-3">
           <div className="flex items-center">
-            <div className="flex items-center gap-3">
+            <div className="flex min-w-0 items-center gap-2 sm:gap-3">
               {config.siteLogo ? (
                 <img
                   src={config.siteLogo}
                   alt={config.siteName}
-                  className="h-10 w-10 rounded-xl object-contain bg-white/80 shadow-sm border border-white/50"
+                  className="h-8 w-8 rounded-xl object-contain bg-white/80 shadow-sm border border-white/50 sm:h-10 sm:w-10"
                   referrerPolicy="no-referrer"
                 />
               ) : null}
-              <span className="text-2xl font-extrabold tracking-tighter">
+              <span className="min-w-0 text-lg font-extrabold tracking-tighter sm:text-2xl">
                 <span className="text-emerald-700">{config.siteName}</span>
-                <span className="text-red-700 ml-1">{config.siteNameSecondary}</span>
+                <span className="ml-1 text-red-700">{config.siteNameSecondary}</span>
               </span>
             </div>
           </div>
@@ -864,7 +864,7 @@ const Navbar = ({ onSearch, searchValue, onBookViewing, config }: { onSearch: (v
           {/* Mobile Toggle */}
           <div className="md:hidden flex items-center">
             <button onClick={() => setIsOpen(!isOpen)} className={scrolled ? "text-slate-900" : "text-white"}>
-              {isOpen ? <X size={28} /> : <Menu size={28} />}
+              {isOpen ? <X size={24} /> : <Menu size={24} />}
             </button>
           </div>
         </div>
@@ -991,7 +991,7 @@ const Hero = ({ onSearch, onQuickPick, properties, config }: { onSearch: (val: s
   };
 
   return (
-    <section id="home" className="relative min-h-[115vh] overflow-hidden pb-24 lg:pb-28">
+    <section id="home" className="relative min-h-[100svh] overflow-hidden pb-16 md:pb-24 lg:pb-28">
       {/* Background Image with Overlay */}
       <div className="absolute inset-0 z-0">
         <img
@@ -1006,8 +1006,8 @@ const Hero = ({ onSearch, onQuickPick, properties, config }: { onSearch: (val: s
         <div className="animated-bg-overlay"></div>
       </div>
 
-      <div className="relative z-20 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-28 lg:pt-32 pb-8 w-full">
-        <div className="grid gap-10 items-center min-h-[78vh]">
+      <div className="relative z-20 mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8 pt-24 sm:pt-28 lg:pt-32 pb-8">
+        <div className="grid min-h-[72vh] items-center gap-8 sm:gap-10">
           <motion.div
             initial={{ opacity: 0, y: 40 }}
             animate={{ opacity: 1, y: 0 }}
@@ -1028,7 +1028,7 @@ const Hero = ({ onSearch, onQuickPick, properties, config }: { onSearch: (val: s
               initial={{ opacity: 0, y: 30 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.9, ease: 'easeOut', delay: 0.25 }}
-              className="text-5xl md:text-7xl font-extrabold text-white leading-[1.02] mb-6 max-w-xl"
+              className="mb-5 max-w-xl text-4xl font-extrabold leading-[1.05] text-white sm:text-5xl md:text-7xl"
               style={headingStyle}
             >
               {config.heroTitle.split(' ').map((word, i) => (
@@ -1042,7 +1042,7 @@ const Hero = ({ onSearch, onQuickPick, properties, config }: { onSearch: (val: s
               initial={{ opacity: 0, y: 30 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.9, delay: 0.35 }}
-              className="text-lg md:text-xl text-slate-300 mb-10 leading-relaxed max-w-xl"
+              className="mb-8 max-w-xl text-base leading-relaxed text-slate-300 sm:text-lg md:text-xl"
               style={bodyStyle}
             >
               {config.heroSubtitle}
@@ -1052,13 +1052,13 @@ const Hero = ({ onSearch, onQuickPick, properties, config }: { onSearch: (val: s
               initial={{ opacity: 0, y: 18 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.7, delay: 0.42 }}
-              className="flex flex-wrap items-center gap-3 mb-8"
+              className="mb-8 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center"
             >
-              <a href="#rentals" className="inline-flex items-center gap-2 rounded-full bg-emerald-600 px-6 py-3 text-sm font-bold text-white shadow-xl shadow-emerald-900/20 transition-transform hover:-translate-y-0.5">
+              <a href="#rentals" className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-emerald-600 px-6 py-3 text-sm font-bold text-white shadow-xl shadow-emerald-900/20 transition-transform hover:-translate-y-0.5 sm:w-auto">
                 Explore Rentals
                 <ArrowRight size={18} />
               </a>
-              <a href="#contact" className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-6 py-3 text-sm font-bold text-white backdrop-blur-md transition-all hover:bg-white/20">
+              <a href="#contact" className="inline-flex w-full items-center justify-center gap-2 rounded-full border border-white/20 bg-white/10 px-6 py-3 text-sm font-bold text-white backdrop-blur-md transition-all hover:bg-white/20 sm:w-auto">
                 Contact Us
               </a>
             </motion.div>
@@ -1087,7 +1087,7 @@ const Hero = ({ onSearch, onQuickPick, properties, config }: { onSearch: (val: s
                       whileHover={{ y: -2, scale: 1.01 }}
                       whileTap={{ scale: 0.98 }}
                       onClick={() => onQuickPick(pick)}
-                      className={`min-w-[220px] rounded-[1.5rem] border border-white/10 bg-gradient-to-br ${pick.tone} px-5 py-4 text-left text-white transition-all`}
+                      className={`min-w-[78vw] rounded-[1.5rem] border border-white/10 bg-gradient-to-br ${pick.tone} px-5 py-4 text-left text-white transition-all sm:min-w-[220px]`}
                     >
                       <div className="flex items-center justify-between gap-4">
                         <div>
@@ -1123,8 +1123,8 @@ const Hero = ({ onSearch, onQuickPick, properties, config }: { onSearch: (val: s
               </summary>
 
               <div className="border-t border-white/10 p-5 lg:p-6 space-y-5">
-                <form onSubmit={handleSearch} className="flex flex-col sm:flex-row gap-2">
-                <div className="flex-1 flex items-center px-4 py-3 bg-white/88 backdrop-blur-sm rounded-2xl border border-slate-200/70">
+                <form onSubmit={handleSearch} className="flex flex-col gap-2 sm:flex-row">
+                <div className="flex flex-1 items-center rounded-2xl border border-slate-200/70 bg-white/88 px-4 py-3 backdrop-blur-sm">
                     <Search className="text-slate-400 mr-2" size={20} />
                     <input
                       type="text"
@@ -1138,7 +1138,7 @@ const Hero = ({ onSearch, onQuickPick, properties, config }: { onSearch: (val: s
                       onFocus={() => setShowSuggestions(true)}
                     />
                   </div>
-                  <button type="submit" className="bg-emerald-600 text-white px-6 py-3 rounded-2xl font-bold hover:bg-emerald-700 transition-all flex items-center justify-center gap-2 shadow-lg">
+                  <button type="submit" className="flex items-center justify-center gap-2 rounded-2xl bg-emerald-600 px-6 py-3 font-bold text-white shadow-lg transition-all hover:bg-emerald-700 sm:w-auto">
                     <Search size={18} />
                     Search
                   </button>
@@ -1166,7 +1166,7 @@ const Hero = ({ onSearch, onQuickPick, properties, config }: { onSearch: (val: s
                   )}
                 </AnimatePresence>
 
-                <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
                     <div className="rounded-[1.5rem] bg-white/12 backdrop-blur-sm border border-white/10 p-4 text-white">
                     <div className="text-xs uppercase tracking-[0.3em] text-white/45 mb-2">Properties</div>
                     <div className="text-2xl font-black">{config.propertiesManaged || '500+'}</div>
@@ -1201,7 +1201,7 @@ const Services = ({ onSelectService, config }: { onSelectService: (service: stri
   const headingStyle = { fontFamily: config.headingFontFamily, color: config.headingTextColor };
   const bodyStyle = { fontFamily: config.bodyFontFamily, color: config.bodyTextColor };
   return (
-    <section id="services" className="py-24 bg-slate-50 relative overflow-hidden">
+    <section id="services" className="relative overflow-hidden bg-slate-50 py-16 sm:py-24">
       {/* Background Image with Overlay */}
       <div className="absolute inset-0 z-0">
         <img 
@@ -1215,17 +1215,17 @@ const Services = ({ onSelectService, config }: { onSelectService: (service: stri
       </div>
       
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
-        <div className="text-center mb-16">
+        <div className="mb-12 text-center sm:mb-16">
           <h2 className="text-emerald-700 font-bold tracking-widest uppercase text-sm mb-4">Our Expertise</h2>
-          <h3 className="text-4xl font-extrabold text-slate-900" style={headingStyle}>Comprehensive Home Solutions</h3>
+          <h3 className="text-3xl font-extrabold text-slate-900 sm:text-4xl" style={headingStyle}>Comprehensive Home Solutions</h3>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+        <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4 sm:gap-8">
           {config.services.map((service, idx) => (
             <motion.div 
               key={idx}
               whileHover={{ y: -10 }}
-              className="bg-white/90 backdrop-blur-xl p-8 rounded-3xl shadow-sm border border-slate-100 hover:shadow-xl transition-all flex flex-col"
+              className="flex flex-col rounded-3xl border border-slate-100 bg-white/90 p-6 shadow-sm backdrop-blur-xl transition-all hover:shadow-xl sm:p-8"
             >
               <div className={`w-16 h-16 ${service.color} rounded-2xl flex items-center justify-center mb-6`}>
                 <IconRenderer name={service.icon} className={service.color.replace('bg-', 'text-').replace('-50', '-600')} size={32} />
@@ -1317,7 +1317,7 @@ const RequestInfoModal = ({ property, onClose }: { property: Property, onClose: 
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="fixed inset-0 z-[200] bg-slate-900/90 backdrop-blur-md flex items-center justify-center p-4"
+      className="fixed inset-0 z-[200] flex items-center justify-center bg-slate-900/90 p-3 backdrop-blur-md sm:p-4"
       role="dialog"
       aria-modal="true"
       aria-labelledby="info-modal-title"
@@ -1327,9 +1327,9 @@ const RequestInfoModal = ({ property, onClose }: { property: Property, onClose: 
       <motion.div 
         initial={{ scale: 0.9, y: 20 }}
         animate={{ scale: 1, y: 0 }}
-        className="bg-white w-full max-w-lg rounded-[3rem] overflow-hidden shadow-2xl relative p-8 md:p-12"
+        className="relative w-full max-w-lg overflow-hidden rounded-[1.5rem] bg-white p-6 shadow-2xl sm:rounded-[3rem] sm:p-8 md:p-12"
       >
-        <button onClick={onClose} aria-label="Close inquiry form" className="absolute top-8 right-8 p-2 hover:bg-slate-100 rounded-full transition-colors">
+        <button onClick={onClose} aria-label="Close inquiry form" className="absolute right-4 top-4 rounded-full p-2 transition-colors hover:bg-slate-100 sm:right-8 sm:top-8">
           <X size={24} />
         </button>
 
@@ -1470,7 +1470,7 @@ const ViewingRequestModal = ({ property, onClose }: { property: Property, onClos
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="fixed inset-0 z-[200] bg-slate-900/90 backdrop-blur-md flex items-center justify-center p-4"
+      className="fixed inset-0 z-[200] flex items-center justify-center bg-slate-900/90 p-3 backdrop-blur-md sm:p-4"
       role="dialog"
       aria-modal="true"
       aria-labelledby="viewing-modal-title"
@@ -1480,9 +1480,9 @@ const ViewingRequestModal = ({ property, onClose }: { property: Property, onClos
       <motion.div 
         initial={{ scale: 0.9, y: 20 }}
         animate={{ scale: 1, y: 0 }}
-        className="bg-white w-full max-w-lg rounded-[3rem] overflow-hidden shadow-2xl relative p-8 md:p-12"
+        className="relative w-full max-w-lg overflow-hidden rounded-[1.5rem] bg-white p-6 shadow-2xl sm:rounded-[3rem] sm:p-8 md:p-12"
       >
-        <button onClick={onClose} aria-label="Close viewing request form" className="absolute top-8 right-8 p-2 hover:bg-slate-100 rounded-full transition-colors">
+        <button onClick={onClose} aria-label="Close viewing request form" className="absolute right-4 top-4 rounded-full p-2 transition-colors hover:bg-slate-100 sm:right-8 sm:top-8">
           <X size={24} />
         </button>
 
@@ -1703,7 +1703,7 @@ const PropertyDetail = ({ property, onClose, onRequestViewing, onRequestInfo }: 
               </span>
             </div>
 
-            <h1 className="text-4xl md:text-5xl font-extrabold mb-4">{property.title}</h1>
+            <h1 className="text-3xl font-extrabold mb-4 sm:text-4xl md:text-5xl">{property.title}</h1>
             <div className="flex items-center text-white/60 mb-8 text-lg">
               <MapPin className="mr-2 text-emerald-500" size={20} />
               {property.location}
@@ -1714,7 +1714,7 @@ const PropertyDetail = ({ property, onClose, onRequestViewing, onRequestInfo }: 
               {property.type === 'rent' && <span className="text-xl font-normal text-white/40 ml-2">/ month</span>}
             </div>
 
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-6 mb-12">
+            <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 sm:gap-6 mb-12">
               {property.bedrooms !== undefined && (
                 <div className="bg-white/5 p-4 rounded-2xl border border-white/10">
                   <Bed className="text-emerald-500 mb-2" size={24} />
@@ -1869,7 +1869,7 @@ const PropertyDetail = ({ property, onClose, onRequestViewing, onRequestInfo }: 
             <MapPin className="mr-2 text-emerald-500" size={24} />
             Location Map & Directions
           </h3>
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
             <div className="lg:col-span-2 space-y-4">
               <div className="relative h-96 rounded-[3rem] overflow-hidden border border-white/10 shadow-2xl bg-slate-900">
                 <iframe
@@ -1916,7 +1916,7 @@ const PropertyDetail = ({ property, onClose, onRequestViewing, onRequestInfo }: 
                 </a>
               </div>
             </div>
-            <div className="bg-white/5 p-8 rounded-[3rem] border border-white/10 flex flex-col justify-between gap-8">
+            <div className="bg-white/5 p-5 rounded-[2rem] border border-white/10 flex flex-col justify-between gap-6 sm:p-8 sm:rounded-[3rem] sm:gap-8">
               <div>
                 <p className="text-xs font-bold uppercase tracking-[0.3em] text-emerald-400 mb-4">Route summary</p>
                 <h4 className="text-2xl font-bold mb-4">Pinned Location</h4>
@@ -1972,7 +1972,7 @@ const ComparisonBar = ({ count, onExpand, onClear }: { count: number, onExpand: 
     <motion.div 
       initial={{ y: 100 }}
       animate={{ y: 0 }}
-      className="fixed bottom-8 left-1/2 -translate-x-1/2 z-[105] bg-slate-900 text-white px-8 py-4 rounded-3xl shadow-2xl flex items-center gap-6 border border-white/10 backdrop-blur-xl"
+      className="fixed bottom-4 left-4 right-4 z-[105] flex items-center justify-between gap-3 rounded-3xl border border-white/10 bg-slate-900 px-4 py-3 text-white shadow-2xl backdrop-blur-xl sm:left-1/2 sm:right-auto sm:-translate-x-1/2 sm:gap-6 sm:px-8 sm:py-4"
     >
       <div className="flex items-center gap-3">
         <div className="bg-emerald-600 w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm">
@@ -2007,15 +2007,15 @@ const ComparisonTool = ({ properties, onClose, onRemove }: { properties: Propert
     <motion.div 
       initial={{ opacity: 0, y: 50 }}
       animate={{ opacity: 1, y: 0 }}
-      className="fixed inset-x-0 bottom-0 z-[110] p-4 md:p-8"
+      className="fixed inset-x-0 bottom-0 z-[110] p-3 sm:p-4 md:p-8"
     >
-      <div className="max-w-6xl mx-auto bg-white rounded-[3rem] shadow-2xl border border-slate-200 overflow-hidden">
-        <div className="p-6 md:p-8 bg-slate-50 border-b border-slate-200 flex justify-between items-center">
+      <div className="mx-auto max-w-6xl overflow-hidden rounded-[2rem] border border-slate-200 bg-white shadow-2xl sm:rounded-[3rem]">
+        <div className="flex items-start justify-between gap-4 border-b border-slate-200 bg-slate-50 p-4 sm:items-center sm:p-6 md:p-8">
           <div>
-            <h3 className="text-2xl font-bold text-slate-900">Property Comparison</h3>
+            <h3 className="text-xl font-bold text-slate-900 sm:text-2xl">Property Comparison</h3>
             <p className="text-slate-500">Compare up to 4 properties side-by-side</p>
           </div>
-          <button onClick={onClose} className="p-3 hover:bg-slate-200 rounded-full transition-colors">
+          <button onClick={onClose} className="rounded-full p-3 transition-colors hover:bg-slate-200">
             <X size={24} />
           </button>
         </div>
@@ -2240,7 +2240,7 @@ const Listings = ({
   }, [properties, type]);
 
   return (
-    <section id={type === 'rent' ? "rentals" : "sales"} className={`py-24 ${type === 'sale' ? 'bg-slate-50' : 'bg-white'} relative overflow-hidden`}>
+    <section id={type === 'rent' ? "rentals" : "sales"} className={`relative overflow-hidden py-16 sm:py-24 ${type === 'sale' ? 'bg-slate-50' : 'bg-white'}`}>
       {/* Background Image with Overlay */}
       <div className="absolute inset-0 z-0">
         <img 
@@ -2253,24 +2253,24 @@ const Listings = ({
         <div className="animated-bg-overlay"></div>
       </div>
       
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
-        <div className="mb-12 rounded-[2rem] border border-white/20 bg-white/78 backdrop-blur-xl shadow-2xl shadow-slate-200/20 px-5 py-5">
-          <div className="flex flex-col xl:flex-row justify-between items-start xl:items-end gap-8">
+      <div className="relative z-10 mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <div className="mb-10 rounded-[2rem] border border-white/20 bg-white/78 px-4 py-4 shadow-2xl shadow-slate-200/20 backdrop-blur-xl sm:mb-12 sm:px-5 sm:py-5">
+          <div className="flex flex-col gap-6 xl:flex-row xl:items-end xl:justify-between xl:gap-8">
             <div>
               <h2 className={`font-bold tracking-widest uppercase text-sm mb-4 ${type === 'rent' ? 'text-emerald-700' : 'text-red-700'}`}>
                 {type === 'rent' ? 'Available for Let' : 'Properties for Sale'}
               </h2>
-              <h3 className="text-4xl font-extrabold text-slate-900">
+              <h3 className="text-3xl font-extrabold text-slate-900 sm:text-4xl">
                 {type === 'rent' ? 'Featured Rentals' : 'Investment Opportunities'}
               </h3>
             </div>
           
             {/* Filters */}
-            <div className="flex flex-wrap gap-3">
-              <div className="flex items-center bg-white/80 rounded-xl px-3 py-2 border border-slate-200/70 backdrop-blur-sm">
+            <div className="grid gap-3 sm:grid-cols-2 xl:flex xl:flex-wrap">
+              <div className="flex w-full items-center rounded-xl border border-slate-200/70 bg-white/80 px-3 py-2 backdrop-blur-sm xl:w-auto">
                 <Navigation size={16} className="text-slate-500 mr-2" />
                 <select 
-                  className="bg-transparent text-sm font-semibold focus:outline-none"
+                  className="w-full bg-transparent text-sm font-semibold focus:outline-none"
                   value={filters.sortBy}
                   onChange={(e) => setFilters(prev => ({ ...prev, sortBy: e.target.value }))}
                 >
@@ -2281,10 +2281,10 @@ const Listings = ({
                 </select>
               </div>
 
-            <div className="flex items-center bg-white/80 rounded-xl px-3 py-2 border border-slate-200/70 backdrop-blur-sm">
+            <div className="flex w-full items-center rounded-xl border border-slate-200/70 bg-white/80 px-3 py-2 backdrop-blur-sm xl:w-auto">
               <Filter size={16} className="text-slate-500 mr-2" />
               <select 
-                className="bg-transparent text-sm font-semibold focus:outline-none"
+                className="w-full bg-transparent text-sm font-semibold focus:outline-none"
                 value={filters.priceRange}
                 onChange={(e) => setFilters(prev => ({ ...prev, priceRange: e.target.value }))}
               >
@@ -2306,10 +2306,10 @@ const Listings = ({
             </div>
 
             {type === 'rent' && (
-              <div className="flex items-center bg-white/80 rounded-xl px-3 py-2 border border-slate-200/70 backdrop-blur-sm">
+              <div className="flex w-full items-center rounded-xl border border-slate-200/70 bg-white/80 px-3 py-2 backdrop-blur-sm xl:w-auto">
                 <Layers size={16} className="text-slate-500 mr-2" />
                 <select 
-                  className="bg-transparent text-sm font-semibold focus:outline-none"
+                  className="w-full bg-transparent text-sm font-semibold focus:outline-none"
                   value={filters.propertyType}
                   onChange={(e) => setFilters(prev => ({ ...prev, propertyType: e.target.value }))}
                 >
@@ -2323,10 +2323,10 @@ const Listings = ({
             )}
 
             {type === 'rent' && (
-              <div className="flex items-center bg-white/80 rounded-xl px-3 py-2 border border-slate-200/70 backdrop-blur-sm">
+              <div className="flex w-full items-center rounded-xl border border-slate-200/70 bg-white/80 px-3 py-2 backdrop-blur-sm xl:w-auto">
                 <Bed size={16} className="text-slate-500 mr-2" />
                 <select 
-                  className="bg-transparent text-sm font-semibold focus:outline-none"
+                  className="w-full bg-transparent text-sm font-semibold focus:outline-none"
                   value={filters.unitType}
                   onChange={(e) => setFilters(prev => ({ ...prev, unitType: e.target.value as RentUnitFilter }))}
                 >
@@ -2341,10 +2341,10 @@ const Listings = ({
             )}
 
             {type === 'sale' && (
-              <div className="flex items-center bg-slate-100 rounded-xl px-3 py-2">
+              <div className="flex w-full items-center rounded-xl bg-slate-100 px-3 py-2 xl:w-auto">
                 <Layers size={16} className="text-slate-500 mr-2" />
                 <select 
-                  className="bg-transparent text-sm font-semibold focus:outline-none"
+                  className="w-full bg-transparent text-sm font-semibold focus:outline-none"
                   value={filters.propertyType}
                   onChange={(e) => setFilters(prev => ({ ...prev, propertyType: e.target.value }))}
                 >
@@ -2356,10 +2356,10 @@ const Listings = ({
               </div>
             )}
 
-            <div className="flex items-center bg-white/80 rounded-xl px-3 py-2 border border-slate-200/70 backdrop-blur-sm">
+            <div className="flex w-full items-center rounded-xl border border-slate-200/70 bg-white/80 px-3 py-2 backdrop-blur-sm xl:w-auto">
               <MapPin size={16} className="text-slate-500 mr-2" />
               <select 
-                className="bg-transparent text-sm font-semibold focus:outline-none"
+                className="w-full bg-transparent text-sm font-semibold focus:outline-none"
                 value={filters.location}
                 onChange={(e) => setFilters(prev => ({ ...prev, location: e.target.value }))}
               >
@@ -2368,10 +2368,10 @@ const Listings = ({
               </select>
             </div>
 
-            <div className="flex items-center bg-white/80 rounded-xl px-3 py-2 border border-slate-200/70 backdrop-blur-sm">
+            <div className="flex w-full items-center rounded-xl border border-slate-200/70 bg-white/80 px-3 py-2 backdrop-blur-sm xl:w-auto">
               <CheckCircle2 size={16} className="text-slate-500 mr-2" />
               <select 
-                className="bg-transparent text-sm font-semibold focus:outline-none"
+                className="w-full bg-transparent text-sm font-semibold focus:outline-none"
                 value={filters.status}
                 onChange={(e) => setFilters(prev => ({ ...prev, status: e.target.value }))}
               >
@@ -2385,11 +2385,11 @@ const Listings = ({
             </div>
 
             <div className="relative group">
-              <div className="flex items-center bg-white/80 rounded-xl px-3 py-2 cursor-pointer border border-slate-200/70 backdrop-blur-sm">
+              <div className="flex w-full cursor-pointer items-center rounded-xl border border-slate-200/70 bg-white/80 px-3 py-2 backdrop-blur-sm xl:w-auto">
                 <CheckCircle2 size={16} className="text-slate-500 mr-2" />
                 <span className="text-sm font-semibold">Amenities {filters.amenities.length > 0 && `(${filters.amenities.length})`}</span>
               </div>
-              <div className="absolute top-full right-0 mt-2 bg-white/92 backdrop-blur-xl rounded-2xl shadow-2xl border border-slate-100 p-4 z-50 min-w-[200px] opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all">
+              <div className="absolute right-0 top-full z-50 mt-2 min-w-[200px] rounded-2xl border border-slate-100 bg-white/92 p-4 opacity-0 invisible shadow-2xl backdrop-blur-xl transition-all group-hover:visible group-hover:opacity-100 max-sm:left-0 max-sm:right-auto max-sm:min-w-[min(90vw,20rem)]">
                 <div className="space-y-2 max-h-60 overflow-y-auto pr-2 scrollbar-hide">
                   {allAmenities.map(amenity => (
                     <label key={amenity} className="flex items-center gap-3 cursor-pointer hover:bg-slate-50 p-1 rounded-lg transition-colors">
@@ -2457,7 +2457,7 @@ const Listings = ({
                   className="overflow-hidden"
                 >
                   <div className="pt-4">
-                    <div className="flex items-center justify-end gap-4 mb-4">
+                    <div className="mb-4 flex items-center justify-start gap-4 sm:justify-end">
                       <button
                         type="button"
                         onClick={() => setFilters(prev => ({ ...prev, unitType: 'all', priceRange: 'all' }))}
@@ -2481,7 +2481,7 @@ const Listings = ({
                             whileHover={{ y: -3 }}
                             whileTap={{ scale: 0.98 }}
                             onClick={() => handleUnitTypeSelect(option)}
-                            className={`min-w-[160px] rounded-[1.4rem] px-5 py-4 text-left border transition-all ${
+                            className={`min-w-[72vw] rounded-[1.4rem] border px-5 py-4 text-left transition-all sm:min-w-[160px] ${
                               isActive
                                 ? 'bg-emerald-700 text-white border-emerald-700 shadow-xl shadow-emerald-700/20'
                                 : 'bg-slate-50 text-slate-800 border-slate-100 hover:border-emerald-200 hover:bg-emerald-50/70'
@@ -2509,7 +2509,7 @@ const Listings = ({
         )}
         </div>
         {filteredProperties.length > 0 ? (
-          <div className="mt-10 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
+          <div className="mt-10 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4 lg:gap-8">
             {filteredProperties.map((item) => (
               <motion.div 
                 key={item.id}
@@ -2672,7 +2672,7 @@ const Office = ({ config }: { config: SiteConfig }) => {
               <MapPin size={16} className="mr-2" />
               Visit Our Office
             </div>
-            <h2 className="text-4xl md:text-5xl font-extrabold text-slate-900 leading-tight" style={headingStyle}>
+            <h2 className="text-3xl font-extrabold text-slate-900 leading-tight sm:text-4xl md:text-5xl" style={headingStyle}>
               {config.siteName} Plaza, <span className="text-emerald-600">{config.contactAddress}</span>
             </h2>
             <p className="text-black text-lg leading-relaxed" style={bodyStyle}>
@@ -2808,7 +2808,7 @@ const Contact = ({ initialService, config }: { initialService?: string, config: 
   };
 
   return (
-    <section id="contact" className="py-24 bg-emerald-900 text-white overflow-hidden relative">
+    <section id="contact" className="relative overflow-hidden bg-emerald-900 py-16 text-white sm:py-24">
       {/* Background Image with Overlay */}
       <div className="absolute inset-0 z-0">
         <img 
@@ -2822,14 +2822,14 @@ const Contact = ({ initialService, config }: { initialService?: string, config: 
       </div>
       
       {/* Decorative background elements */}
-      <div className="absolute top-0 right-0 w-96 h-96 bg-emerald-800 rounded-full blur-3xl -mr-48 -mt-48 opacity-30 z-[1]"></div>
-      <div className="absolute bottom-0 left-0 w-96 h-96 bg-emerald-800 rounded-full blur-3xl -ml-48 -mb-48 opacity-30 z-[1]"></div>
+      <div className="absolute top-0 right-0 hidden h-96 w-96 -mr-48 -mt-48 rounded-full bg-emerald-800 blur-3xl opacity-30 z-[1] lg:block"></div>
+      <div className="absolute bottom-0 left-0 hidden h-96 w-96 -ml-48 -mb-48 rounded-full bg-emerald-800 blur-3xl opacity-30 z-[1] lg:block"></div>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
+      <div className="relative z-10 mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <div className="grid grid-cols-1 items-center gap-10 lg:grid-cols-2 lg:gap-16">
           <div>
             <h2 className="text-red-500 font-bold tracking-widest uppercase text-sm mb-4">Get In Touch</h2>
-            <h3 className="text-4xl md:text-5xl font-extrabold mb-8 leading-tight">
+            <h3 className="mb-6 text-2xl font-extrabold leading-tight sm:mb-8 sm:text-4xl md:text-5xl">
               Ready to find your <br />
               <span className="text-emerald-400">perfect property?</span>
             </h3>
@@ -2864,7 +2864,7 @@ const Contact = ({ initialService, config }: { initialService?: string, config: 
               </div>
             </div>
 
-            <div className="bg-white/10 backdrop-blur-sm border border-white/10 p-6 rounded-2xl">
+            <div className="rounded-2xl border border-white/10 bg-white/10 p-6 backdrop-blur-sm">
               <div className="flex items-center text-emerald-400 font-bold mb-2">
                 <CheckCircle2 size={20} className="mr-2" /> Viewing Fee: {config.viewingFee}
               </div>
@@ -2874,7 +2874,7 @@ const Contact = ({ initialService, config }: { initialService?: string, config: 
             </div>
           </div>
 
-          <div className="bg-white/92 backdrop-blur-xl rounded-3xl p-8 md:p-10 shadow-2xl border border-slate-100">
+          <div className="rounded-3xl border border-slate-100 bg-white/92 p-6 shadow-2xl backdrop-blur-xl sm:p-8 md:p-10">
             <h4 className="text-2xl font-bold text-slate-900 mb-6">Send a Message</h4>
             {isSuccess ? (
               <motion.div 
@@ -2890,7 +2890,7 @@ const Contact = ({ initialService, config }: { initialService?: string, config: 
               </motion.div>
             ) : (
               <form onSubmit={handleSubmit} className="space-y-4">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                   <div>
                     <input 
                       type="text" 
@@ -2953,7 +2953,7 @@ const Contact = ({ initialService, config }: { initialService?: string, config: 
 
 const Footer = ({ config }: { config: SiteConfig }) => {
   return (
-    <footer className="bg-slate-950 text-white pt-20 pb-10 relative overflow-hidden" style={{ color: config.footerTextColor }}>
+    <footer className="relative overflow-hidden bg-slate-950 pt-16 pb-10 text-white sm:pt-20" style={{ color: config.footerTextColor }}>
       {/* Background Image with Overlay */}
       <div className="absolute inset-0 z-0">
         <img 
@@ -2966,8 +2966,8 @@ const Footer = ({ config }: { config: SiteConfig }) => {
         <div className="animated-bg-overlay"></div>
       </div>
       
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12 mb-16">
+      <div className="relative z-10 mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <div className="mb-12 grid grid-cols-1 gap-10 md:grid-cols-2 lg:grid-cols-4 lg:gap-12">
           <div>
             <div className="text-3xl font-extrabold tracking-tighter mb-6">
               <span className="text-emerald-500">{config.siteName}</span>
@@ -2976,7 +2976,7 @@ const Footer = ({ config }: { config: SiteConfig }) => {
             <p className="text-inherit leading-relaxed mb-8">
               {config.siteDescription}
             </p>
-            <div className="flex space-x-4">
+            <div className="flex flex-wrap gap-4">
               <a href={config.socialLinks.facebook} className="w-10 h-10 bg-white/5 rounded-full flex items-center justify-center hover:bg-emerald-600 transition-all">
                 <Facebook size={20} />
               </a>
@@ -3012,20 +3012,20 @@ const Footer = ({ config }: { config: SiteConfig }) => {
           <div>
             <h5 className="text-lg font-bold mb-6">Newsletter</h5>
             <p className="text-inherit mb-6">Subscribe to get the latest property listings and investment tips.</p>
-            <div className="flex">
+            <div className="flex flex-col gap-3 sm:flex-row">
               <input 
                 type="email" 
                 placeholder="Email address" 
-                className="bg-white border border-slate-200 px-4 py-3 rounded-l-xl focus:outline-none focus:ring-1 focus:ring-emerald-500 w-full text-blue-950 placeholder:text-blue-900/60"
+                className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-blue-950 placeholder:text-blue-900/60 focus:outline-none focus:ring-1 focus:ring-emerald-500 sm:rounded-l-xl sm:rounded-r-none"
               />
-              <button className="bg-emerald-600 px-4 py-3 rounded-r-xl hover:bg-emerald-700 transition-all">
+              <button className="rounded-xl bg-emerald-600 px-4 py-3 transition-all hover:bg-emerald-700 sm:rounded-r-xl sm:rounded-l-none">
                 Join
               </button>
             </div>
           </div>
         </div>
 
-        <div className="pt-8 border-t border-slate-200 flex flex-col md:flex-row items-center justify-between gap-6 text-inherit text-sm">
+        <div className="flex flex-col items-center justify-between gap-6 border-t border-slate-200 pt-8 text-sm text-inherit md:flex-row">
           <div className="flex flex-col sm:flex-row sm:items-center sm:gap-4">
             <p>&copy; {new Date().getFullYear()} {config.siteName} {config.siteNameSecondary}. All rights reserved.</p>
             <button
@@ -3089,8 +3089,8 @@ const AdminLoginModal = ({ onClose, onLogin, onGoogleLogin, onForgot, error }: {
   };
 
   return (
-    <motion.div className="fixed inset-0 z-[210] bg-slate-900/90 backdrop-blur-md flex items-center justify-center p-4" role="dialog" aria-modal="true">
-      <motion.div className="bg-white w-full max-w-md rounded-[2rem] p-8 shadow-2xl">
+    <motion.div className="fixed inset-0 z-[210] flex items-center justify-center bg-slate-900/90 p-3 backdrop-blur-md sm:p-4" role="dialog" aria-modal="true">
+      <motion.div className="w-full max-w-md rounded-[1.5rem] bg-white p-6 shadow-2xl sm:rounded-[2rem] sm:p-8">
         <div className="mb-6">
           <h3 className="text-2xl font-bold text-slate-900">Admin Login</h3>
           <p className="text-slate-500 mt-2">Sign in with Google or use your admin password</p>
@@ -3184,8 +3184,8 @@ const AdminResetModal = ({
   message: string | null;
 }) => {
   return (
-    <motion.div className="fixed inset-0 z-[210] bg-slate-900/90 backdrop-blur-md flex items-center justify-center p-4" role="dialog" aria-modal="true">
-      <motion.div className="bg-white w-full max-w-md rounded-[2rem] p-8 shadow-2xl">
+    <motion.div className="fixed inset-0 z-[210] flex items-center justify-center bg-slate-900/90 p-3 backdrop-blur-md sm:p-4" role="dialog" aria-modal="true">
+      <motion.div className="w-full max-w-md rounded-[1.5rem] bg-white p-6 shadow-2xl sm:rounded-[2rem] sm:p-8">
         <div className="mb-6">
           <h3 className="text-2xl font-bold text-slate-900">Reset Admin Password</h3>
           <p className="text-slate-500 mt-2">Use your configured admin email to receive a reset code, then set a new password.</p>
@@ -3448,7 +3448,7 @@ const AdminPanel = ({
   return (
     <motion.div className="fixed inset-0 z-[205] bg-slate-950/95 backdrop-blur-xl overflow-y-auto p-4" role="dialog" aria-modal="true">
       <motion.div className="mx-auto w-full max-w-7xl bg-gradient-to-br from-slate-50 to-slate-100 rounded-[2rem] shadow-2xl overflow-hidden">
-        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 bg-gradient-to-r from-emerald-700 to-emerald-900 px-8 py-6 border-b-4 border-emerald-500">
+        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 bg-gradient-to-r from-emerald-700 to-emerald-900 px-5 py-5 border-b-4 border-emerald-500 sm:px-8 sm:py-6">
           <div>
             <h2 className="text-3xl font-bold text-white flex items-center gap-3">
               <Layout size={32} />
@@ -3504,7 +3504,7 @@ const AdminPanel = ({
                         className="w-full rounded-2xl border border-slate-200 px-4 py-3"
                       />
                     </div>
-                    <div className="md:col-span-2 grid grid-cols-2 gap-4">
+                    <div className="md:col-span-2 grid grid-cols-1 gap-4 sm:grid-cols-2">
                       <div className="rounded-2xl border border-slate-200 bg-white p-3">
                         <p className="text-xs font-bold uppercase tracking-[0.25em] text-slate-400 mb-2">Logo Preview</p>
                         {localSettings.siteLogo ? (
@@ -4693,19 +4693,19 @@ const Testimonials = ({ config }: { config: SiteConfig }) => {
       </div>
       
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
-        <div className="text-center mb-16">
-          <h2 className="text-4xl font-extrabold text-slate-900 mb-4" style={headingStyle}>Client Testimonials</h2>
+        <div className="text-center mb-12 sm:mb-16">
+          <h2 className="text-3xl font-extrabold text-slate-900 mb-4 sm:text-4xl" style={headingStyle}>Client Testimonials</h2>
           <p className="text-slate-500 max-w-2xl mx-auto" style={bodyStyle}>Hear from our satisfied clients about their experiences with {config.siteName} {config.siteNameSecondary}.</p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-16">
+        <div className="grid grid-cols-1 gap-6 md:grid-cols-3 sm:gap-8 mb-16">
           {testimonials.map((t) => (
             <motion.div 
               key={t.id}
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
-              className="bg-white/88 backdrop-blur-xl p-8 rounded-[2.5rem] shadow-xl shadow-slate-200/50 relative border border-slate-100"
+              className="bg-white/88 backdrop-blur-xl p-6 rounded-[2rem] shadow-xl shadow-slate-200/50 relative border border-slate-100 sm:p-8 sm:rounded-[2.5rem]"
             >
               <div className="flex items-center gap-4 mb-6">
                 <img src={t.photo} alt={t.name} className="w-14 h-14 rounded-full object-cover border-2 border-emerald-100" />
@@ -4725,11 +4725,11 @@ const Testimonials = ({ config }: { config: SiteConfig }) => {
         </div>
 
         {/* Leave Testimonial Bar */}
-        <div className="bg-emerald-900/92 rounded-[3rem] p-8 md:p-12 text-white relative overflow-hidden border border-white/10">
-          <div className="absolute top-0 right-0 w-64 h-64 bg-emerald-800 rounded-full -translate-y-1/2 translate-x-1/2 blur-3xl opacity-50"></div>
+        <div className="bg-emerald-900/92 rounded-[2rem] p-6 md:p-12 text-white relative overflow-hidden border border-white/10 sm:rounded-[3rem] sm:p-8">
+          <div className="absolute top-0 right-0 hidden h-64 w-64 -translate-y-1/2 translate-x-1/2 rounded-full bg-emerald-800 blur-3xl opacity-50 sm:block"></div>
           <div className="relative z-10 flex flex-col lg:flex-row items-center justify-between gap-12">
             <div className="max-w-md">
-              <h3 className="text-3xl font-bold mb-4" style={headingStyle}>Share Your Experience</h3>
+              <h3 className="text-2xl font-bold mb-4 sm:text-3xl" style={headingStyle}>Share Your Experience</h3>
               <p className="text-emerald-100/80" style={bodyStyle}>We value your feedback! Let us know how we've helped you find your perfect home or manage your property.</p>
             </div>
             <form onSubmit={handleSubmit} className="w-full lg:max-w-2xl flex flex-col sm:flex-row gap-4">
@@ -4754,7 +4754,7 @@ const Testimonials = ({ config }: { config: SiteConfig }) => {
               <button 
                 type="submit" 
                 disabled={isSubmitting}
-                className="bg-white text-emerald-900 px-10 py-4 rounded-2xl font-bold text-lg hover:bg-emerald-50 transition-all self-center sm:self-end h-fit disabled:opacity-50"
+                className="bg-white text-emerald-900 px-10 py-4 rounded-2xl font-bold text-lg hover:bg-emerald-50 transition-all self-stretch sm:self-end h-fit disabled:opacity-50"
               >
                 {isSubmitting ? "Submitting..." : "Submit"}
               </button>
