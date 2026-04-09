@@ -178,9 +178,6 @@ const INITIAL_CONFIG: SiteConfig = {
   bodyTextColor: "#0f172a",
   headingTextColor: "#020617",
   footerTextColor: "#bfdbfe",
-  heroTitle: "",
-  heroSubtitle: "",
-  heroBadge: "",
   contactPhone: "",
   contactEmail: "",
   contactAddress: "",
@@ -221,7 +218,10 @@ const INITIAL_CONFIG: SiteConfig = {
   hostelPriceRange: "Ksh 2k - 6k",
   rentalPriceBands: [],
   services: [],
-  testimonials: []
+  testimonials: [],
+  heroTitle: "Premium Homes & Rentals",
+  heroSubtitle: "Browse trusted listings, find the right rental band, and connect with our team.",
+  heroBadge: "Trusted Property Management"
 };
 
 const PROPERTIES: Property[] = []; // Property inventory is loaded from the secure backend store.
@@ -933,6 +933,9 @@ const buildHeroQuickPicks = (config: SiteConfig): HeroQuickPick[] => getEffectiv
 const Hero = ({ onSearch, onQuickPick, properties, config }: { onSearch: (val: string) => void, onQuickPick: (pick: HeroQuickPick) => void, properties: Property[], config: SiteConfig }) => {
   const headingStyle = { fontFamily: config.headingFontFamily, color: '#ffffff' };
   const bodyStyle = { fontFamily: config.bodyFontFamily, color: '#dbeafe' };
+  const heroBadge = config.heroBadge.trim() || "Trusted Property Management";
+  const heroTitle = config.heroTitle.trim() || "Premium Homes & Rentals";
+  const heroSubtitle = config.heroSubtitle.trim() || "Browse trusted listings, find the right rental band, and connect with our team.";
   const [searchValue, setSearchValue] = useState("");
   const [showSuggestions, setShowSuggestions] = useState(false);
 
@@ -986,7 +989,7 @@ const Hero = ({ onSearch, onQuickPick, properties, config }: { onSearch: (val: s
   };
 
   return (
-    <section id="home" className="relative min-h-[100svh] overflow-hidden pb-16 md:pb-24 lg:pb-28">
+    <section id="home" className="relative min-h-[100svh] overflow-x-hidden overflow-y-visible pb-16 md:pb-24 lg:pb-28">
       {/* Background Image with Overlay */}
       <div className="absolute inset-0 z-0">
         <img
@@ -1016,7 +1019,7 @@ const Hero = ({ onSearch, onQuickPick, properties, config }: { onSearch: (val: s
               className="inline-flex items-center gap-2 px-4 py-1.5 mb-6 text-xs font-bold tracking-widest text-white uppercase bg-red-700/95 rounded-full shadow-lg shadow-red-950/20"
             >
               <span className="h-2 w-2 rounded-full bg-white animate-pulse" />
-              {config.heroBadge}
+              {heroBadge}
             </motion.span>
 
             <motion.h1
@@ -1026,7 +1029,7 @@ const Hero = ({ onSearch, onQuickPick, properties, config }: { onSearch: (val: s
               className="mb-5 max-w-xl text-4xl font-extrabold leading-[1.05] text-white sm:text-5xl md:text-7xl"
               style={headingStyle}
             >
-              {config.heroTitle.split(' ').map((word, i) => (
+              {heroTitle.split(' ').map((word, i) => (
                 word.toLowerCase() === 'premium'
                   ? <span key={i} className="text-emerald-500"> {word} </span>
                   : ` ${word} `
@@ -1040,7 +1043,7 @@ const Hero = ({ onSearch, onQuickPick, properties, config }: { onSearch: (val: s
               className="mb-8 max-w-xl text-base leading-relaxed text-slate-300 sm:text-lg md:text-xl"
               style={bodyStyle}
             >
-              {config.heroSubtitle}
+              {heroSubtitle}
             </motion.p>
 
             <motion.div
@@ -1109,7 +1112,7 @@ const Hero = ({ onSearch, onQuickPick, properties, config }: { onSearch: (val: s
               </div>
             </motion.div>
 
-            <details className="group mt-6 rounded-[2rem] border border-white/10 bg-white/5 backdrop-blur-xl shadow-2xl shadow-black/10 overflow-hidden">
+            <details className="group mt-6 rounded-[2rem] border border-white/10 bg-white/5 backdrop-blur-xl shadow-2xl shadow-black/10 overflow-visible">
               <summary className="ml-auto flex cursor-pointer list-none items-center justify-center p-4 text-white w-fit">
                 <span className="sr-only">Toggle search and filters</span>
                 <span className="flex h-12 w-12 items-center justify-center rounded-full border border-white/15 bg-white/10 backdrop-blur-md transition group-open:bg-emerald-500/20">
@@ -1117,7 +1120,7 @@ const Hero = ({ onSearch, onQuickPick, properties, config }: { onSearch: (val: s
                 </span>
               </summary>
 
-              <div className="border-t border-white/10 p-5 lg:p-6 space-y-5">
+              <div className="border-t border-white/10 p-5 lg:p-6 space-y-5 overflow-visible">
                 <form onSubmit={handleSearch} className="flex flex-col gap-2 sm:flex-row">
                 <div className="flex flex-1 items-center rounded-2xl border border-slate-200/70 bg-white/88 px-4 py-3 backdrop-blur-sm">
                     <Search className="text-slate-400 mr-2" size={20} />
