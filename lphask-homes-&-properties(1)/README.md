@@ -15,7 +15,25 @@ View your app in AI Studio: https://ai.studio/apps/63a39285-1909-48fe-9d45-fd8a9
 
 1. Install dependencies:
    `npm install`
-2. Set the env values in [.env.local](.env.local). At minimum, configure `VITE_GEMINI_API_KEY` and `VITE_SUPER_ADMIN_EMAILS`.
+2. Set the env values in [.env.local](.env.local). At minimum, configure `VITE_GEMINI_API_KEY` and the Firebase client keys.
 3. Use the admin panel to change site identity, contact info, social links, services, rental ranges, and testimonials without touching code.
 4. Run the app:
    `npm run dev`
+
+## Admin Access
+
+Firestore writes are protected by the `admin` custom claim. Assign that claim to your admin account with Firebase Admin SDK or a trusted backend before using the admin panel.
+
+## Firebase Rules
+
+Deploy the Firestore rules with Firebase CLI:
+
+`firebase deploy --only firestore:rules`
+
+## Set Admin Claim
+
+Use the bundled script to grant the `admin` custom claim to a Firebase user:
+
+`ADMIN_EMAIL=admin@example.com FIREBASE_SERVICE_ACCOUNT_PATH=/path/to/service-account.json npm run set-admin-claim`
+
+You can also provide `FIREBASE_SERVICE_ACCOUNT_JSON` or `GOOGLE_APPLICATION_CREDENTIALS` instead of `FIREBASE_SERVICE_ACCOUNT_PATH`.

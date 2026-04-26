@@ -68,10 +68,8 @@ import {
   updateDoc, 
   deleteDoc, 
   getDocs, 
-  query, 
-  where 
 } from "firebase/firestore";
-import { onAuthStateChanged } from "firebase/auth";
+import { getIdTokenResult, onAuthStateChanged } from "firebase/auth";
 
 // --- Types ---
 const env = import.meta.env as Record<string, string | undefined>;
@@ -80,14 +78,6 @@ const readTextEnv = (key: string, fallback: string) => {
   const value = env[key]?.trim();
   return value ? value : fallback;
 };
-
-const readCsvEnv = (key: string, fallback: string[] = []) => {
-  const value = env[key]?.trim();
-  if (!value) return fallback;
-  return value.split(",").map(item => item.trim()).filter(Boolean);
-};
-
-const SUPER_ADMINS = readCsvEnv("VITE_SUPER_ADMIN_EMAILS");
 
 interface Property {
   id: string;
@@ -3981,15 +3971,23 @@ export default function App() {
   // --- Auth State Listener ---
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      if (user) {
-        const isVerifiedAdmin = Boolean(user.emailVerified && SUPER_ADMINS.includes(user.email || ""));
-        setIsAdminLoggedIn(isVerifiedAdmin);
-        setAdminRole(isVerifiedAdmin ? 'super-admin' : 'content-manager');
-      } else {
+      try {
+        if (user) {
+          const token = await getIdTokenResult(user, true);
+          const isVerifiedAdmin = Boolean(user.emailVerified && token.claims.admin === true);
+          setIsAdminLoggedIn(isVerifiedAdmin);
+          setAdminRole(isVerifiedAdmin ? 'super-admin' : 'content-manager');
+        } else {
+          setIsAdminLoggedIn(false);
+          setAdminRole('content-manager');
+        }
+      } catch (error) {
+        console.warn("Unable to determine admin status:", error);
         setIsAdminLoggedIn(false);
         setAdminRole('content-manager');
+      } finally {
+        setAuthReady(true);
       }
-      setAuthReady(true);
     });
     return () => unsubscribe();
   }, []);
