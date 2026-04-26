@@ -1,0 +1,5 @@
+{
+  "name": "LPHASK Homes & Properties",
+  "description": "Configurable property management app with admin-driven branding and site content.",
+  "requestFramePermissions": ["geolocation"]
+}

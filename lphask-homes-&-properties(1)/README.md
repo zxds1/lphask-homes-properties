@@ -15,6 +15,7 @@ View your app in AI Studio: https://ai.studio/apps/63a39285-1909-48fe-9d45-fd8a9
 
 1. Install dependencies:
    `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
+2. Set the env values in [.env.local](.env.local). At minimum, configure `VITE_GEMINI_API_KEY` and `VITE_SUPER_ADMIN_EMAILS`.
+3. Use the admin panel to change site identity, contact info, social links, services, rental ranges, and testimonials without touching code.
+4. Run the app:
    `npm run dev`

@@ -1,0 +1,69 @@
+{
+  "entities": {
+    "Property": {
+      "title": "Property",
+      "description": "A real estate listing for rent or sale",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "price": { "type": "number" },
+        "location": { "type": "string" },
+        "img": { "type": "string" },
+        "images": { "type": "array", "items": { "type": "string" } },
+        "type": { "type": "string", "enum": ["rent", "sale"] },
+        "category": { "type": "string" },
+        "bedrooms": { "type": "number" },
+        "bathrooms": { "type": "number" },
+        "sqft": { "type": "number" },
+        "amenities": { "type": "array", "items": { "type": "string" } },
+        "leaseDuration": { "type": "string" },
+        "plotSize": { "type": "string" },
+        "zoning": { "type": "string" },
+        "lat": { "type": "number" },
+        "lng": { "type": "number" },
+        "description": { "type": "string" },
+        "virtualTourUrl": { "type": "string" },
+        "videoTourUrl": { "type": "string" },
+        "tags": { "type": "array", "items": { "type": "string" } },
+        "status": { "type": "string", "enum": ["Available", "Under Offer", "Sold", "Rented", "Unavailable"] }
+      },
+      "required": ["id", "title", "price", "location", "type", "description", "img", "status", "lat", "lng"]
+    },
+    "SiteConfig": {
+      "title": "Site Configuration",
+      "description": "Global settings for the application",
+      "type": "object",
+      "properties": {
+        "siteName": { "type": "string" },
+        "siteNameSecondary": { "type": "string" },
+        "heroTitle": { "type": "string" },
+        "heroSubtitle": { "type": "string" },
+        "heroBadge": { "type": "string" },
+        "contactPhone": { "type": "string" },
+        "contactEmail": { "type": "string" },
+        "contactAddress": { "type": "string" },
+        "socialLinks": { "type": "object" },
+        "siteDescription": { "type": "string" },
+        "heroBgImage": { "type": "string" },
+        "viewingFee": { "type": "string" },
+        "services": { "type": "array" },
+        "testimonials": { "type": "array" },
+        "officeWorkingHours": { "type": "string" },
+        "stats": { "type": "array" },
+        "rentalRanges": { "type": "array" },
+        "sectionImages": { "type": "object" }
+      }
+    }
+  },
+  "firestore": {
+    "/properties/{propertyId}": {
+      "schema": "Property",
+      "description": "Public property listings"
+    },
+    "/config/site": {
+      "schema": "SiteConfig",
+      "description": "Global site configuration"
+    }
+  }
+}
