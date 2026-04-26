@@ -46,7 +46,9 @@ import {
   Award,
   ShieldCheck,
   TrendingUp,
-  Image as ImageIcon
+  Image as ImageIcon,
+  Moon,
+  SunMedium
 } from "lucide-react";
 import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { AIChatBot } from "./components/AIChatBot";
@@ -77,6 +79,21 @@ const env = import.meta.env as Record<string, string | undefined>;
 const readTextEnv = (key: string, fallback: string) => {
   const value = env[key]?.trim();
   return value ? value : fallback;
+};
+
+type ThemeMode = 'light' | 'dark';
+
+const THEME_STORAGE_KEY = 'lphask-theme';
+
+const getInitialTheme = (): ThemeMode => {
+  if (typeof window === 'undefined') return 'light';
+
+  const savedTheme = window.localStorage.getItem(THEME_STORAGE_KEY);
+  if (savedTheme === 'light' || savedTheme === 'dark') {
+    return savedTheme;
+  }
+
+  return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
 };
 
 interface Property {
@@ -519,9 +536,22 @@ const Stats = ({ config }: { config: SiteConfig }) => {
   );
 };
 
-const Navbar = ({ onAdminClick, onSearch, config }: { onAdminClick: () => void, onSearch: (val: string) => void, config: SiteConfig }) => {
+const Navbar = ({
+  onAdminClick,
+  onSearch,
+  config,
+  theme,
+  onToggleTheme,
+}: {
+  onAdminClick: () => void,
+  onSearch: (val: string) => void,
+  config: SiteConfig,
+  theme: ThemeMode,
+  onToggleTheme: () => void,
+}) => {
   const [isOpen, setIsOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+  const isDark = theme === 'dark';
 
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 20);
@@ -539,12 +569,12 @@ const Navbar = ({ onAdminClick, onSearch, config }: { onAdminClick: () => void, 
   ];
 
   return (
-    <nav className={`fixed w-full z-50 transition-all duration-300 ${scrolled ? "bg-white/95 backdrop-blur-md shadow-sm py-2" : "bg-transparent py-4 sm:py-6"}`}>
+    <nav className={`fixed w-full z-50 transition-all duration-300 ${scrolled ? (isDark ? "bg-slate-950/85 backdrop-blur-md shadow-sm py-2 border-b border-white/5" : "bg-white/95 backdrop-blur-md shadow-sm py-2") : "bg-transparent py-4 sm:py-6"}`}>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center">
           <div className="flex items-center">
             <span className="text-xl sm:text-2xl font-black tracking-tighter">
-              <span className={scrolled ? "text-emerald-700" : "text-white"}>{config.siteName}</span>
+              <span className={scrolled ? (isDark ? "text-white" : "text-emerald-700") : "text-white"}>{config.siteName}</span>
               <span className="text-red-600 ml-0.5">{config.siteNameSecondary}</span>
             </span>
           </div>
@@ -567,11 +597,25 @@ const Navbar = ({ onAdminClick, onSearch, config }: { onAdminClick: () => void, 
                 key={link.name} 
                 href={link.href} 
                 onClick={link.onClick}
-                className={`text-xs lg:text-sm font-bold uppercase tracking-widest hover:text-emerald-500 transition-colors ${scrolled ? "text-slate-600" : "text-white/90"}`}
+                className={`text-xs lg:text-sm font-bold uppercase tracking-widest hover:text-emerald-500 transition-colors ${scrolled ? (isDark ? "text-slate-200" : "text-slate-600") : "text-white/90"}`}
               >
                 {link.name}
               </a>
             ))}
+            <button
+              type="button"
+              onClick={onToggleTheme}
+              className={`inline-flex items-center justify-center w-10 h-10 rounded-full border transition-all active:scale-95 ${
+                scrolled
+                  ? isDark
+                    ? "border-white/10 bg-white/5 text-white hover:bg-white/10"
+                    : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
+                  : "border-white/20 bg-white/10 text-white backdrop-blur-md hover:bg-white/20"
+              }`}
+              aria-label={`Switch to ${isDark ? 'light' : 'dark'} mode`}
+            >
+              {isDark ? <SunMedium size={18} /> : <Moon size={18} />}
+            </button>
             <button className="bg-emerald-600 text-white px-6 py-2 rounded-full text-xs font-black uppercase tracking-widest hover:bg-emerald-700 transition-all shadow-lg shadow-emerald-600/20 active:scale-95">
               Book Viewing
             </button>
@@ -581,7 +625,7 @@ const Navbar = ({ onAdminClick, onSearch, config }: { onAdminClick: () => void, 
           <div className="md:hidden flex items-center">
             <button 
               onClick={() => setIsOpen(!isOpen)} 
-              className={`p-2 rounded-xl transition-all ${scrolled ? "text-slate-900 bg-slate-100" : "text-white bg-white/10 backdrop-blur-md"}`}
+              className={`p-2 rounded-xl transition-all ${scrolled ? (isDark ? "text-white bg-white/5" : "text-slate-900 bg-slate-100") : "text-white bg-white/10 backdrop-blur-md"}`}
             >
               {isOpen ? <X size={24} /> : <Menu size={24} />}
             </button>
@@ -596,19 +640,29 @@ const Navbar = ({ onAdminClick, onSearch, config }: { onAdminClick: () => void, 
             initial={{ opacity: 0, x: '100%' }}
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: '100%' }}
-            className="fixed inset-0 z-50 bg-white flex flex-col md:hidden"
+            className={`fixed inset-0 z-50 flex flex-col md:hidden ${isDark ? "bg-slate-950 text-white" : "bg-white text-slate-900"}`}
           >
-            <div className="p-4 flex justify-between items-center border-b border-slate-100">
+            <div className={`p-4 flex justify-between items-center border-b ${isDark ? "border-white/5" : "border-slate-100"}`}>
               <span className="text-xl font-black italic tracking-tighter">
                 <span className="text-emerald-700">{config.siteName}</span>
                 <span className="text-red-600 ml-0.5">{config.siteNameSecondary}</span>
               </span>
-              <button 
-                onClick={() => setIsOpen(false)}
-                className="p-2 bg-slate-100 rounded-xl text-slate-900"
-              >
-                <X size={24} />
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={onToggleTheme}
+                  className={`p-2 rounded-xl transition-all ${isDark ? "bg-white/5 text-white" : "bg-slate-100 text-slate-900"}`}
+                  aria-label={`Switch to ${isDark ? 'light' : 'dark'} mode`}
+                >
+                  {isDark ? <SunMedium size={20} /> : <Moon size={20} />}
+                </button>
+                <button 
+                  onClick={() => setIsOpen(false)}
+                  className={`p-2 rounded-xl ${isDark ? "bg-white/5 text-white" : "bg-slate-100 text-slate-900"}`}
+                >
+                  <X size={24} />
+                </button>
+              </div>
             </div>
             <div className="flex-1 overflow-y-auto p-6 space-y-8">
               <div className="relative">
@@ -616,7 +670,7 @@ const Navbar = ({ onAdminClick, onSearch, config }: { onAdminClick: () => void, 
                 <input 
                   type="text" 
                   placeholder="Search properties..." 
-                  className="w-full pl-12 pr-4 py-4 bg-slate-50 border border-slate-100 rounded-2xl text-slate-900 outline-none focus:ring-2 focus:ring-emerald-500 transition-all"
+                  className={`w-full pl-12 pr-4 py-4 rounded-2xl outline-none focus:ring-2 focus:ring-emerald-500 transition-all ${isDark ? "bg-white/5 border border-white/10 text-white placeholder:text-slate-500" : "bg-slate-50 border border-slate-100 text-slate-900"}`}
                   onChange={(e) => onSearch(e.target.value)}
                 />
               </div>
@@ -631,17 +685,17 @@ const Navbar = ({ onAdminClick, onSearch, config }: { onAdminClick: () => void, 
                     }}
                     className="flex items-center justify-between group"
                   >
-                    <span className="text-2xl font-black text-slate-900 group-hover:text-emerald-600 transition-colors uppercase tracking-widest">{link.name}</span>
+                    <span className={`text-2xl font-black group-hover:text-emerald-600 transition-colors uppercase tracking-widest ${isDark ? "text-white" : "text-slate-900"}`}>{link.name}</span>
                     <ArrowRight className="text-emerald-600 opacity-0 group-hover:opacity-100 transition-all -translate-x-4 group-hover:translate-x-0" />
                   </a>
                 ))}
               </div>
             </div>
-            <div className="p-6 border-t border-slate-100">
+            <div className={`p-6 border-t ${isDark ? "border-white/5" : "border-slate-100"}`}>
               <button className="w-full bg-emerald-600 text-white py-5 rounded-2xl font-black text-lg uppercase tracking-widest shadow-xl shadow-emerald-600/20 active:scale-95">
                 Book A Viewing
               </button>
-              <div className="mt-6 flex justify-center gap-6 text-slate-400">
+              <div className={`mt-6 flex justify-center gap-6 ${isDark ? "text-slate-500" : "text-slate-400"}`}>
                 <Facebook size={24} />
                 <Instagram size={24} />
                 <Twitter size={24} />
@@ -3967,6 +4021,14 @@ export default function App() {
   const [isAdminLoggedIn, setIsAdminLoggedIn] = useState(false);
   const [adminRole, setAdminRole] = useState<'super-admin' | 'content-manager'>('content-manager');
   const [authReady, setAuthReady] = useState(false);
+  const [theme, setTheme] = useState<ThemeMode>(getInitialTheme);
+
+  useEffect(() => {
+    const root = document.documentElement;
+    root.dataset.theme = theme;
+    root.style.colorScheme = theme;
+    window.localStorage.setItem(THEME_STORAGE_KEY, theme);
+  }, [theme]);
 
   // --- Auth State Listener ---
   useEffect(() => {
@@ -4115,8 +4177,8 @@ export default function App() {
       themeMeta.setAttribute("name", "theme-color");
       document.head.appendChild(themeMeta);
     }
-    themeMeta.setAttribute("content", config.brandThemeColor);
-  }, [config.siteName, config.siteNameSecondary, config.siteDescription, config.brandThemeColor]);
+    themeMeta.setAttribute("content", theme === 'dark' ? '#07111e' : config.brandThemeColor);
+  }, [config.siteName, config.siteNameSecondary, config.siteDescription, config.brandThemeColor, theme]);
 
   const filteredProperties = useMemo(() => {
     if (!searchQuery.trim()) return properties;
@@ -4160,7 +4222,13 @@ export default function App() {
   return (
     <main className="min-h-screen">
       <SEOData config={config} />
-      <Navbar onAdminClick={() => setIsAdminMode(true)} onSearch={setSearchQuery} config={config} />
+      <Navbar
+        onAdminClick={() => setIsAdminMode(true)}
+        onSearch={setSearchQuery}
+        config={config}
+        theme={theme}
+        onToggleTheme={() => setTheme(prev => prev === 'dark' ? 'light' : 'dark')}
+      />
       <Hero onSearch={setSearchQuery} properties={properties} config={config} />
       <Services onSelectService={handleSelectService} config={config} />
       <RentalGuide config={config} />
