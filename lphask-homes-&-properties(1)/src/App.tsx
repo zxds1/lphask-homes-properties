@@ -87,10 +87,26 @@ type ThemeMode = 'light' | 'dark';
 
 const THEME_STORAGE_KEY = 'lphask-theme';
 
+const safeGetLocalStorage = (key: string) => {
+  try {
+    return window.localStorage.getItem(key);
+  } catch {
+    return null;
+  }
+};
+
+const safeSetLocalStorage = (key: string, value: string) => {
+  try {
+    window.localStorage.setItem(key, value);
+  } catch {
+    // Ignore storage failures so the app still renders.
+  }
+};
+
 const getInitialTheme = (): ThemeMode => {
   if (typeof window === 'undefined') return 'light';
 
-  const savedTheme = window.localStorage.getItem(THEME_STORAGE_KEY);
+  const savedTheme = safeGetLocalStorage(THEME_STORAGE_KEY);
   if (savedTheme === 'light' || savedTheme === 'dark') {
     return savedTheme;
   }
@@ -4056,7 +4072,7 @@ export default function App() {
     const root = document.documentElement;
     root.dataset.theme = theme;
     root.style.colorScheme = theme;
-    window.localStorage.setItem(THEME_STORAGE_KEY, theme);
+    safeSetLocalStorage(THEME_STORAGE_KEY, theme);
   }, [theme]);
 
   // --- Auth State Listener ---
