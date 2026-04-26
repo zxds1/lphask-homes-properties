@@ -30,6 +30,10 @@ Deploy the Firestore rules with Firebase CLI:
 
 `firebase deploy --only firestore:rules`
 
+Deploy the Storage rules with Firebase CLI:
+
+`firebase deploy --only storage`
+
 ## Set Admin Claim
 
 Use the bundled script to grant the `admin` custom claim to a Firebase user:
@@ -37,3 +41,5 @@ Use the bundled script to grant the `admin` custom claim to a Firebase user:
 `ADMIN_EMAIL=admin@example.com FIREBASE_SERVICE_ACCOUNT_PATH=/path/to/service-account.json npm run set-admin-claim`
 
 You can also provide `FIREBASE_SERVICE_ACCOUNT_JSON` or `GOOGLE_APPLICATION_CREDENTIALS` instead of `FIREBASE_SERVICE_ACCOUNT_PATH`.
+
+Image and video uploads are stored in Firebase Storage and the resulting download URLs are saved in Firestore.

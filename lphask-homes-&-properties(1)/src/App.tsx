@@ -57,6 +57,8 @@ import {
   db, 
   loginWithGoogle, 
   logout, 
+  uploadFileToStorage,
+  buildStoragePath,
   handleFirestoreError, 
   OperationType 
 } from "./firebase";
@@ -2616,31 +2618,45 @@ const AdminPanel = ({
     setIsAdding(true);
   };
 
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>, type: 'image' | 'video' = 'image') => {
+  const uploadPropertyAsset = async (file: File, assetType: 'image' | 'video', index: number) => {
+    if (!editingProperty) return;
+
+    const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+    const storagePath = buildStoragePath([
+      'media',
+      'lphask',
+      'properties',
+      editingProperty.id,
+      assetType === 'video' ? 'video' : 'images',
+      `${Date.now()}-${index}-${safeName}`,
+    ]);
+
+    return uploadFileToStorage(file, storagePath);
+  };
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>, type: 'image' | 'video' = 'image') => {
     const files = e.target.files;
-    if (files && files.length > 0 && editingProperty) {
-      for (let i = 0; i < files.length; i++) {
-        const file = files[i];
-        const reader = new FileReader();
-        reader.onloadend = () => {
-          const base64String = reader.result as string;
-          setEditingProperty(prev => {
-            if (!prev) return null;
-            if (type === 'video') {
-              return {
-                ...prev,
-                videoTourUrl: base64String
-              };
-            }
-            return {
-              ...prev,
-              images: [...(prev.images || []), base64String]
-            };
-          });
-        };
-        reader.readAsDataURL(file);
+    if (!files || files.length === 0 || !editingProperty) return;
+
+    const selectedFiles = Array.from(files);
+    if (type === 'video') {
+      const downloadUrl = await uploadPropertyAsset(selectedFiles[0], type, 0);
+      if (downloadUrl) {
+        setEditingProperty(prev => prev ? { ...prev, videoTourUrl: downloadUrl } : prev);
+      }
+    } else {
+      const uploadedUrls: string[] = [];
+      for (const [index, file] of selectedFiles.entries()) {
+        const downloadUrl = await uploadPropertyAsset(file, type, index);
+        if (downloadUrl) {
+          uploadedUrls.push(downloadUrl);
+        }
+      }
+      if (uploadedUrls.length > 0) {
+        setEditingProperty(prev => prev ? { ...prev, images: [...(prev.images || []), ...uploadedUrls] } : prev);
       }
     }
+    e.target.value = '';
   };
 
   const moveImage = (index: number, direction: 'left' | 'right') => {
@@ -2670,6 +2686,23 @@ const AdminPanel = ({
       newImages.splice(index, 1);
       setEditingProperty({ ...editingProperty, images: newImages });
     }
+  };
+
+  const uploadConfigAsset = async (
+    file: File,
+    category: 'hero' | 'section',
+    key: string
+  ) => {
+    const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+    const storagePath = buildStoragePath([
+      'media',
+      'lphask',
+      category,
+      key,
+      `${Date.now()}-${safeName}`,
+    ]);
+
+    return uploadFileToStorage(file, storagePath);
   };
 
   const updateRentalRange = (index: number, patch: Partial<SiteConfig["rentalRanges"][number]>) => {
@@ -3059,17 +3092,15 @@ const AdminPanel = ({
                                 type="file" 
                                 className="hidden" 
                                 accept="image/*"
-                                onChange={(e) => {
+                                onChange={async (e) => {
                                   const file = e.target.files?.[0];
                                   if (file) {
-                                    const reader = new FileReader();
-                                    reader.onloadend = () => {
-                                      setEditingConfig({ 
-                                        ...editingConfig, 
-                                        sectionImages: { ...editingConfig.sectionImages, [key]: reader.result as string } 
-                                      });
-                                    };
-                                    reader.readAsDataURL(file);
+                                    const uploadedUrl = await uploadConfigAsset(file, 'section', key);
+                                    setEditingConfig({ 
+                                      ...editingConfig, 
+                                      sectionImages: { ...editingConfig.sectionImages, [key]: uploadedUrl } 
+                                    });
+                                    e.currentTarget.value = '';
                                   }
                                 }}
                               />
@@ -3103,14 +3134,12 @@ const AdminPanel = ({
                               type="file" 
                               className="hidden" 
                               accept="image/*"
-                              onChange={(e) => {
+                              onChange={async (e) => {
                                 const file = e.target.files?.[0];
                                 if (file) {
-                                  const reader = new FileReader();
-                                  reader.onloadend = () => {
-                                    setEditingConfig({ ...editingConfig, heroBgImage: reader.result as string });
-                                  };
-                                  reader.readAsDataURL(file);
+                                  const uploadedUrl = await uploadConfigAsset(file, 'hero', 'background');
+                                  setEditingConfig({ ...editingConfig, heroBgImage: uploadedUrl });
+                                  e.currentTarget.value = '';
                                 }
                               }}
                             />

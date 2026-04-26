@@ -1,0 +1,16 @@
+rules_version = '2';
+
+service firebase.storage {
+  match /b/{bucket}/o {
+    function isVerifiedAdmin() {
+      return request.auth != null
+        && request.auth.token.admin == true
+        && request.auth.token.email_verified == true;
+    }
+
+    match /{allPaths=**} {
+      allow read: if true;
+      allow write: if isVerifiedAdmin();
+    }
+  }
+}

@@ -1,6 +1,7 @@
 import { initializeApp } from 'firebase/app';
 import { getAuth, GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
 import { getFirestore, doc, getDocFromServer } from 'firebase/firestore';
+import { getStorage, ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import firebaseConfigJson from '../firebase-applet-config.json';
 
 // Support both JSON config (for AI Studio) and Env variables (for migration/deployment)
@@ -18,7 +19,24 @@ const config = {
 const app = initializeApp(config);
 export const auth = getAuth(app);
 export const db = getFirestore(app, config.firestoreDatabaseId || '(default)');
+export const storage = getStorage(app);
 export const googleProvider = new GoogleAuthProvider();
+
+const sanitizeFileName = (name: string) => name.replace(/[^a-zA-Z0-9._-]/g, '_');
+
+export async function uploadFileToStorage(file: File, path: string) {
+  const fileRef = ref(storage, path);
+  await uploadBytes(fileRef, file);
+  return getDownloadURL(fileRef);
+}
+
+export function buildStoragePath(parts: string[]) {
+  return parts
+    .map(part => part.trim())
+    .filter(Boolean)
+    .map(part => sanitizeFileName(part))
+    .join('/');
+}
 
 // --- Error Handling ---
 export enum OperationType {
